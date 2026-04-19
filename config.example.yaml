@@ -1,0 +1,22 @@
+easyatwork:
+  auth_mode: client            # "client" or "user"
+  client_id: "REPLACE_ME"
+  client_secret: "REPLACE_ME"  # or set EAW_CLIENT_SECRET env var
+  base_url: "https://api.easyatwork.com"
+
+sync:
+  lookback_days: 7
+  lookahead_days: 90
+  user_id: null                # null = self
+
+backend: eventkit              # "eventkit" or "ics"
+
+backends:
+  eventkit:
+    calendar_name: "Work Shifts"
+    calendar_source: "iCloud"
+  ics:
+    output_path: "~/Documents/easyatwork-shifts.ics"
+
+logging:
+  level: INFO
