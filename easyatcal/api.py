@@ -117,7 +117,12 @@ class EawClient:
                             f"rate limit / server errors exceeded retries "
                             f"({r.status_code})"
                         )
-                    time.sleep(2 ** (attempts - 1))
+                    delay = 2 ** (attempts - 1)
+                    retry_after = r.headers.get("Retry-After")
+                    if retry_after is not None:
+                        with contextlib.suppress(ValueError):
+                            delay = max(delay, int(retry_after))
+                    time.sleep(delay)
                     continue
                 raise ApiError(f"GET {url} -> {r.status_code} {r.text}")
 

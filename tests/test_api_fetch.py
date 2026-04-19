@@ -120,6 +120,26 @@ def test_fetch_shifts_retries_on_429(tmp_path: Path, monkeypatch):
 
 
 @respx.mock
+def test_fetch_shifts_honors_retry_after_header(tmp_path: Path, monkeypatch):
+    sleeps: list[float] = []
+    monkeypatch.setattr("easyatcal.api.time.sleep", lambda s: sleeps.append(s))
+
+    responses_iter = iter([
+        httpx.Response(429, headers={"Retry-After": "7"}),
+        httpx.Response(200, json={"data": [], "next": None}),
+    ])
+    respx.get("https://api.easyatwork.com/v1/shifts").mock(
+        side_effect=lambda req: next(responses_iter)
+    )
+    client = _fresh_client(tmp_path)
+
+    client.fetch_shifts(
+        from_date=date(2026, 4, 19), to_date=date(2026, 4, 22)
+    )
+    assert sleeps == [7]
+
+
+@respx.mock
 def test_fetch_shifts_gives_up_after_retries(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("easyatcal.api.time.sleep", lambda s: None)
     respx.get("https://api.easyatwork.com/v1/shifts").mock(

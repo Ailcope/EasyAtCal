@@ -8,10 +8,22 @@ All notable changes to this project are documented here. Format follows
 
 ### Added
 - `eaw-sync doctor` preflight command: checks config, auth, backend wiring.
+- `eaw-sync state show`: prints local state path, tracked-shift count, last sync.
 - `eaw-sync sync --dry-run`: computes adds/updates/deletes without touching
   the calendar or state.
+- Defined `sync` exit codes: 0 clean, 1 partial failure (`BackendError`),
+  2 fatal (config/auth/network).
+- Post-sync summary line (`Sync complete: X added, Y updated, Z deleted.`);
+  `run_sync` now returns a `SyncSummary`.
+- `logging.format: text|json` config option; JSON formatter suitable for log
+  aggregators.
+- `watch` handles `SIGTERM` gracefully (launchctl unload / systemd stop),
+  sleeps in 1-second slices for quick exit.
+- API backoff honors `Retry-After` header on 429/5xx responses.
 - `examples/launchd/com.easyatcal.watch.plist`: sample launchd agent for
   auto-running `sync` every 15 minutes.
+- Ruff config + `.pre-commit-config.yaml`; CI now lints and enforces 85%
+  coverage.
 - `CHANGELOG.md`, expanded `README.md`, `LICENSE` (MIT).
 - GitHub Actions workflow to publish to PyPI on `v*` tags via trusted
   publisher.

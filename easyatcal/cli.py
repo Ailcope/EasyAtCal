@@ -141,13 +141,24 @@ def watch_cmd(
         900, "--interval-seconds", help="Seconds between sync passes."
     ),
 ) -> None:
-    """Run sync on a loop until Ctrl-C."""
+    """Run sync on a loop until Ctrl-C or SIGTERM."""
+    import signal
+
     cfg = load_config(config_path())
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
+
+    stop = False
+
+    def _handler(signum, _frame):  # noqa: ARG001
+        nonlocal stop
+        stop = True
+
+    signal.signal(signal.SIGTERM, _handler)
+
     try:
-        while True:
+        while not stop:
             run_sync(
                 api=api,
                 backend=backend,
@@ -155,10 +166,17 @@ def watch_cmd(
                 lookback_days=cfg.sync.lookback_days,
                 lookahead_days=cfg.sync.lookahead_days,
             )
+            if stop:
+                break
             typer.echo(f"Sleeping {interval_seconds}s...")
-            time.sleep(interval_seconds)
+            # Sleep in 1s slices so SIGTERM exits promptly.
+            for _ in range(interval_seconds):
+                if stop:
+                    break
+                time.sleep(1)
     except KeyboardInterrupt:
-        typer.echo("\nStopped.")
+        pass
+    typer.echo("\nStopped.")
 
 
 # ---------- state ----------
