@@ -1,0 +1,23 @@
+# Secrets & user data
+config.yaml
+.env
+*.ics
+state.json
+token.json
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+.venv/
