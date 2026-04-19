@@ -122,6 +122,55 @@ def watch_cmd(
         typer.echo("\nStopped.")
 
 
+# ---------- doctor ----------
+
+@app.command("doctor")
+def doctor_cmd() -> None:
+    """Check config, credentials, and backend wiring."""
+    from easyatcal.api import AuthError
+
+    failures = 0
+    cfg_file = config_path()
+
+    # 1. Config
+    if not cfg_file.exists():
+        typer.echo(f"[FAIL] config: not found at {cfg_file}")
+        typer.echo("       Run `eaw-sync config init`.")
+        raise typer.Exit(code=1)
+    try:
+        cfg = load_config(cfg_file)
+        typer.echo(f"[ OK ] config: loaded from {cfg_file}")
+    except Exception as e:
+        typer.echo(f"[FAIL] config: {e}")
+        raise typer.Exit(code=1)
+
+    configure_logging(level=cfg.logging.level, log_file=log_path())
+
+    # 2. Auth
+    try:
+        api = _build_api_client(cfg)
+        api.authenticate()
+        typer.echo("[ OK ] auth: token obtained")
+    except AuthError as e:
+        typer.echo(f"[FAIL] auth: {e}")
+        failures += 1
+    except Exception as e:
+        typer.echo(f"[FAIL] auth: {e}")
+        failures += 1
+
+    # 3. Backend
+    try:
+        _build_backend(cfg)
+        typer.echo(f"[ OK ] backend: {cfg.backend} reachable")
+    except Exception as e:
+        typer.echo(f"[FAIL] backend ({cfg.backend}): {e}")
+        failures += 1
+
+    if failures:
+        raise typer.Exit(code=1)
+    typer.echo("All checks passed.")
+
+
 # ---------- auth ----------
 
 @auth_app.command("test")
