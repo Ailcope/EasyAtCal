@@ -32,10 +32,15 @@ EXAMPLE_CONFIG = Path(__file__).parent.parent / "config.example.yaml"
 
 # Override set by the root callback when --config-path is given.
 _CONFIG_OVERRIDE: Path | None = None
+_LOG_LEVEL_OVERRIDE: str | None = None
 
 
 def _cfg_path() -> Path:
     return _CONFIG_OVERRIDE if _CONFIG_OVERRIDE is not None else config_path()
+
+
+def _get_log_level(cfg_level: str) -> str:
+    return _LOG_LEVEL_OVERRIDE if _LOG_LEVEL_OVERRIDE is not None else cfg_level
 
 
 def _version_callback(value: bool) -> None:
@@ -53,6 +58,18 @@ def _root(
         "--config-path",
         help="Override the default config file location.",
     ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Set log level to DEBUG.",
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q",
+        help="Set log level to WARNING.",
+    ),
     _version: bool = typer.Option(  # noqa: B008
         False,
         "--version",
@@ -62,7 +79,12 @@ def _root(
     ),
 ) -> None:
     global _CONFIG_OVERRIDE
+    global _LOG_LEVEL_OVERRIDE
     _CONFIG_OVERRIDE = config_path_override
+    if verbose:
+        _LOG_LEVEL_OVERRIDE = "DEBUG"
+    elif quiet:
+        _LOG_LEVEL_OVERRIDE = "WARNING"
 
 
 # ---------- helpers ----------
@@ -124,7 +146,7 @@ def sync_cmd(
 ) -> None:
     """Run one sync pass and exit."""
     cfg = load_config(_cfg_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
+    configure_logging(level=_get_log_level(cfg.logging.level), log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
     if dry_run:
@@ -184,7 +206,7 @@ def watch_cmd(
     from easyatcal.backends.base import BackendError
 
     cfg = load_config(_cfg_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
+    configure_logging(level=_get_log_level(cfg.logging.level), log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
 
@@ -338,7 +360,7 @@ def auth_test() -> None:
     from easyatcal.api import AuthError
 
     cfg = load_config(_cfg_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
+    configure_logging(level=_get_log_level(cfg.logging.level), log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     try:
         api.authenticate()
