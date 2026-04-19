@@ -227,6 +227,27 @@ def state_show() -> None:
     typer.echo(f"Last sync: {state.last_sync or 'never'}")
 
 
+@state_app.command("clear")
+def state_clear(
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Confirm deletion without prompting."
+    ),
+) -> None:
+    """Delete the local state file. Next sync rebuilds from scratch."""
+    sp = state_path()
+    if not yes:
+        typer.echo(
+            f"Refusing to delete {sp} without --yes. "
+            "A full resync will re-create every event."
+        )
+        raise typer.Exit(code=1)
+    if sp.exists():
+        sp.unlink()
+        typer.echo(f"Deleted {sp}.")
+    else:
+        typer.echo(f"No state at {sp}; nothing to do.")
+
+
 # ---------- doctor ----------
 
 @app.command("doctor")
@@ -269,6 +290,18 @@ def doctor_cmd() -> None:
         typer.echo(f"[ OK ] backend: {cfg.backend} reachable")
     except Exception as e:
         typer.echo(f"[FAIL] backend ({cfg.backend}): {e}")
+        failures += 1
+
+    # 4. State directory writable
+    sp = state_path()
+    try:
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        probe = sp.parent / ".eaw-sync-doctor-probe"
+        probe.write_text("ok")
+        probe.unlink()
+        typer.echo(f"[ OK ] state: {sp.parent} writable")
+    except OSError as e:
+        typer.echo(f"[FAIL] state: cannot write to {sp.parent}: {e}")
         failures += 1
 
     if failures:
