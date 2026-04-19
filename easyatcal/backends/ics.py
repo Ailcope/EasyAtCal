@@ -4,7 +4,7 @@ from pathlib import Path
 
 from icalendar import Calendar, Event
 
-from easyatcal.backends.base import Changes
+from easyatcal.backends.base import ApplyResult, Changes
 from easyatcal.models import Shift
 
 UID_PREFIX = "easyatcal-"
@@ -40,7 +40,7 @@ class IcsBackend:
         self.output_path = Path(output_path).expanduser()
         self._current: dict[str, Shift] = {s.id: s for s in known_shifts}
 
-    def apply(self, changes: Changes) -> dict[str, str]:
+    def apply(self, changes: Changes) -> ApplyResult:
         mapping: dict[str, str] = {}
 
         for shift in changes.adds:
@@ -56,11 +56,17 @@ class IcsBackend:
             sid for sid in self._current
             if _uid_for(sid) in delete_uids
         ]
+        confirmed_deletes: list[str] = []
         for sid in to_drop:
             self._current.pop(sid, None)
+            confirmed_deletes.append(_uid_for(sid))
+        # Any requested delete for a uid we never knew about is treated as
+        # "already gone" — surface it so the orchestrator prunes state.
+        for uid in delete_uids - set(confirmed_deletes):
+            confirmed_deletes.append(uid)
 
         self._write()
-        return mapping
+        return ApplyResult(mapping=mapping, deleted_uids=confirmed_deletes)
 
     def _write(self) -> None:
         cal = Calendar()

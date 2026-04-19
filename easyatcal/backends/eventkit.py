@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from typing import Any
 
-from easyatcal.backends.base import Changes
+from easyatcal.backends.base import ApplyResult, BackendError, Changes
 from easyatcal.models import Shift
 
 
@@ -99,44 +99,63 @@ class EventKitBackend:
             f"{self.calendar_source!r}. Create it in Calendar.app first."
         )
 
-    def apply(self, changes: Changes) -> dict[str, str]:
-        mapping: dict[str, str] = {}
-
-        for shift in changes.adds:
-            event = _new_event(self._store, self._calendar, shift)
-            err = None
-            self._store.saveEvent_span_error_(event, 0, err)  # 0 = EKSpanThisEvent
-            mapping[shift.id] = event.calendarItemExternalIdentifier()
-
-        for shift, event_uid in changes.updates:
-            existing = self._store.calendarItemWithIdentifier_(event_uid)
-            if existing is None:
+    def apply(self, changes: Changes) -> ApplyResult:
+        result = ApplyResult()
+        try:
+            for shift in changes.adds:
                 event = _new_event(self._store, self._calendar, shift)
-                err = None
-                self._store.saveEvent_span_error_(event, 0, err)
-                mapping[shift.id] = event.calendarItemExternalIdentifier()
-                continue
-            existing.setTitle_(shift.title)
-            import Foundation  # type: ignore[import-not-found]
-            existing.setStartDate_(
-                Foundation.NSDate.dateWithTimeIntervalSince1970_(shift.start.timestamp())
-            )
-            existing.setEndDate_(
-                Foundation.NSDate.dateWithTimeIntervalSince1970_(shift.end.timestamp())
-            )
-            if shift.location is not None:
-                existing.setLocation_(shift.location)
-            if shift.notes is not None:
-                existing.setNotes_(shift.notes)
-            err = None
-            self._store.saveEvent_span_error_(existing, 0, err)
-            mapping[shift.id] = event_uid
+                ok, err = self._store.saveEvent_span_error_(event, 0, None)
+                if not ok:
+                    raise BackendError(f"saveEvent failed for {shift.id}: {err}", result)
+                result.mapping[shift.id] = event.calendarItemExternalIdentifier()
 
-        for event_uid in changes.deletes:
-            existing = self._store.calendarItemWithIdentifier_(event_uid)
-            if existing is None:
-                continue
-            err = None
-            self._store.removeEvent_span_error_(existing, 0, err)
+            for shift, event_uid in changes.updates:
+                existing = self._store.calendarItemWithIdentifier_(event_uid)
+                if existing is None:
+                    event = _new_event(self._store, self._calendar, shift)
+                    ok, err = self._store.saveEvent_span_error_(event, 0, None)
+                    if not ok:
+                        raise BackendError(
+                            f"saveEvent (replacement) failed for {shift.id}: {err}",
+                            result,
+                        )
+                    result.mapping[shift.id] = event.calendarItemExternalIdentifier()
+                    continue
+                existing.setTitle_(shift.title)
+                import Foundation  # type: ignore[import-not-found]
+                existing.setStartDate_(
+                    Foundation.NSDate.dateWithTimeIntervalSince1970_(
+                        shift.start.timestamp()
+                    )
+                )
+                existing.setEndDate_(
+                    Foundation.NSDate.dateWithTimeIntervalSince1970_(
+                        shift.end.timestamp()
+                    )
+                )
+                if shift.location is not None:
+                    existing.setLocation_(shift.location)
+                if shift.notes is not None:
+                    existing.setNotes_(shift.notes)
+                ok, err = self._store.saveEvent_span_error_(existing, 0, None)
+                if not ok:
+                    raise BackendError(
+                        f"saveEvent (update) failed for {shift.id}: {err}", result
+                    )
+                result.mapping[shift.id] = event_uid
 
-        return mapping
+            for event_uid in changes.deletes:
+                existing = self._store.calendarItemWithIdentifier_(event_uid)
+                if existing is None:
+                    # Treat as already-deleted so state stays clean.
+                    result.deleted_uids.append(event_uid)
+                    continue
+                ok, err = self._store.removeEvent_span_error_(existing, 0, None)
+                if not ok:
+                    raise BackendError(
+                        f"removeEvent failed for {event_uid}: {err}", result
+                    )
+                result.deleted_uids.append(event_uid)
+        except BackendError:
+            raise
+        return result
