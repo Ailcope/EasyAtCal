@@ -4,7 +4,6 @@ import pytest
 
 from easyatcal.config import Config, load_config
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "config_valid.yaml"
 
 

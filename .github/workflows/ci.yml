@@ -26,5 +26,7 @@ jobs:
       - name: Install eventkit extra (macOS only)
         if: runner.os == 'macOS'
         run: pip install -e '.[eventkit]'
+      - name: Lint
+        run: ruff check easyatcal tests
       - name: Test
-        run: pytest --cov=easyatcal
+        run: pytest --cov=easyatcal --cov-fail-under=85

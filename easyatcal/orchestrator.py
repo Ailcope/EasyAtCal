@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
@@ -22,7 +22,7 @@ def run_sync(
     lookahead_days: int,
     now: datetime | None = None,
 ) -> None:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     from_date = (now - timedelta(days=lookback_days)).date()
     to_date = (now + timedelta(days=lookahead_days)).date()
 

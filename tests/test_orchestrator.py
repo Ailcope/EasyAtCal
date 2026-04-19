@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -13,12 +13,12 @@ from easyatcal.state import load_state
 def _shift(id_: str) -> Shift:
     return Shift(
         id=id_,
-        start=datetime(2026, 4, 20, 9, tzinfo=timezone.utc),
-        end=datetime(2026, 4, 20, 17, tzinfo=timezone.utc),
+        start=datetime(2026, 4, 20, 9, tzinfo=UTC),
+        end=datetime(2026, 4, 20, 17, tzinfo=UTC),
         title=f"t{id_}",
         location=None,
         notes=None,
-        updated_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 4, 18, tzinfo=UTC),
     )
 
 
@@ -39,7 +39,7 @@ def test_run_sync_applies_changes_and_persists_state(tmp_path: Path):
         state_path=state_path,
         lookback_days=1,
         lookahead_days=1,
-        now=datetime(2026, 4, 19, 12, tzinfo=timezone.utc),
+        now=datetime(2026, 4, 19, 12, tzinfo=UTC),
     )
 
     changes = backend.apply.call_args.args[0]
@@ -70,7 +70,7 @@ def test_run_sync_persists_partial_state_on_backend_error(tmp_path: Path):
             state_path=state_path,
             lookback_days=1,
             lookahead_days=1,
-            now=datetime(2026, 4, 19, 12, tzinfo=timezone.utc),
+            now=datetime(2026, 4, 19, 12, tzinfo=UTC),
         )
 
     # s1 WAS persisted; s2 was NOT.
@@ -109,7 +109,7 @@ def test_run_sync_prunes_deleted_uids(tmp_path: Path):
         state_path=state_path,
         lookback_days=1,
         lookahead_days=1,
-        now=datetime(2026, 4, 19, 12, tzinfo=timezone.utc),
+        now=datetime(2026, 4, 19, 12, tzinfo=UTC),
     )
 
     saved = load_state(state_path)

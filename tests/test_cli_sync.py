@@ -1,3 +1,4 @@
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
@@ -51,7 +52,8 @@ def test_watch_loops_until_interrupt(
 def test_sync_dry_run_skips_backend_and_state(
     mock_cfg, mock_log, mock_api_build, mock_back, tmp_path
 ):
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from easyatcal.models import Shift
 
     mock_cfg.return_value = MagicMock(
@@ -62,12 +64,12 @@ def test_sync_dry_run_skips_backend_and_state(
     api.fetch_shifts.return_value = [
         Shift(
             id="s1",
-            start=datetime(2026, 5, 1, 9, tzinfo=timezone.utc),
-            end=datetime(2026, 5, 1, 17, tzinfo=timezone.utc),
+            start=datetime(2026, 5, 1, 9, tzinfo=UTC),
+            end=datetime(2026, 5, 1, 17, tzinfo=UTC),
             title="Shift s1",
             location=None,
             notes=None,
-            updated_at=datetime(2026, 4, 29, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 4, 29, tzinfo=UTC),
         )
     ]
     mock_api_build.return_value = api

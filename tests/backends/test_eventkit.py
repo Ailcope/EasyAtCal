@@ -1,5 +1,5 @@
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,12 +15,12 @@ pytestmark = pytest.mark.skipif(
 def _shift(id_: str) -> Shift:
     return Shift(
         id=id_,
-        start=datetime(2026, 4, 20, 9, tzinfo=timezone.utc),
-        end=datetime(2026, 4, 20, 17, tzinfo=timezone.utc),
+        start=datetime(2026, 4, 20, 9, tzinfo=UTC),
+        end=datetime(2026, 4, 20, 17, tzinfo=UTC),
         title=f"Shift {id_}",
         location=None,
         notes=None,
-        updated_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 4, 18, tzinfo=UTC),
     )
 
 

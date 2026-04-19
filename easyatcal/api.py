@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -54,7 +55,7 @@ class EawClient:
         except (json.JSONDecodeError, ValueError):
             return None
         expires_at = datetime.fromisoformat(data["expires_at"])
-        if expires_at <= datetime.now(timezone.utc):
+        if expires_at <= datetime.now(UTC):
             return None
         return data["access_token"]
 
@@ -74,7 +75,7 @@ class EawClient:
             raise AuthError(f"auth failed: {r.status_code} {r.text}")
         data = r.json()
         token = data["access_token"]
-        expires_at = datetime.now(timezone.utc) + timedelta(
+        expires_at = datetime.now(UTC) + timedelta(
             seconds=int(data.get("expires_in", 3600))
         )
         self._write_cache(token, expires_at)
@@ -87,10 +88,8 @@ class EawClient:
         tmp = self.token_cache.with_suffix(self.token_cache.suffix + ".tmp")
         tmp.write_text(json.dumps(payload))
         os.replace(tmp, self.token_cache)
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(self.token_cache, 0o600)
-        except OSError:
-            pass
 
     # ----- shifts -----
 
