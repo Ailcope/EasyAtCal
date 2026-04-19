@@ -1,0 +1,18 @@
+easyatwork:
+  auth_mode: client
+  client_id: "cid"
+  client_secret: "csecret"
+  base_url: "https://api.easyatwork.com"
+sync:
+  lookback_days: 7
+  lookahead_days: 90
+  user_id: null
+backend: ics
+backends:
+  eventkit:
+    calendar_name: "Work Shifts"
+    calendar_source: "iCloud"
+  ics:
+    output_path: "~/Documents/shifts.ics"
+logging:
+  level: INFO
