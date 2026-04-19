@@ -136,7 +136,9 @@ def sync_cmd(
         now = datetime.now(UTC)
         from_date = (now - timedelta(days=cfg.sync.lookback_days)).date()
         to_date = (now + timedelta(days=cfg.sync.lookahead_days)).date()
-        remote = api.fetch_shifts(from_date=from_date, to_date=to_date)
+        remote = api.fetch_shifts(
+            from_date=from_date, to_date=to_date, user_id=cfg.sync.user_id
+        )
         state = load_state(state_path())
         changes = compute_changes(
             remote, state, known_updated_at=state.shift_updated_at
@@ -156,6 +158,7 @@ def sync_cmd(
             state_path=state_path(),
             lookback_days=cfg.sync.lookback_days,
             lookahead_days=cfg.sync.lookahead_days,
+            user_id=cfg.sync.user_id,
         )
     except BackendError as e:
         typer.echo(f"Sync partial failure: {e}")
@@ -178,6 +181,8 @@ def watch_cmd(
     """Run sync on a loop until Ctrl-C or SIGTERM."""
     import signal
 
+    from easyatcal.backends.base import BackendError
+
     cfg = load_config(_cfg_path())
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
@@ -191,20 +196,36 @@ def watch_cmd(
 
     signal.signal(signal.SIGTERM, _handler)
 
+    consecutive_errors = 0
+    max_backoff = 3600
+
     try:
         while not stop:
-            run_sync(
-                api=api,
-                backend=backend,
-                state_path=state_path(),
-                lookback_days=cfg.sync.lookback_days,
-                lookahead_days=cfg.sync.lookahead_days,
-            )
+            try:
+                run_sync(
+                    api=api,
+                    backend=backend,
+                    state_path=state_path(),
+                    lookback_days=cfg.sync.lookback_days,
+                    lookahead_days=cfg.sync.lookahead_days,
+                    user_id=cfg.sync.user_id,
+                )
+                consecutive_errors = 0
+                sleep_time = interval_seconds
+            except BackendError as e:
+                typer.echo(f"Sync partial failure: {e}", err=True)
+                consecutive_errors = 0
+                sleep_time = interval_seconds
+            except Exception as e:
+                consecutive_errors += 1
+                sleep_time = min(interval_seconds * (2 ** (consecutive_errors - 1)), max_backoff)
+                typer.echo(f"Sync failed: {e}. Backing off for {sleep_time}s.", err=True)
+
             if stop:
                 break
-            typer.echo(f"Sleeping {interval_seconds}s...")
+            typer.echo(f"Sleeping {sleep_time}s...")
             # Sleep in 1s slices so SIGTERM exits promptly.
-            for _ in range(interval_seconds):
+            for _ in range(sleep_time):
                 if stop:
                     break
                 time.sleep(1)

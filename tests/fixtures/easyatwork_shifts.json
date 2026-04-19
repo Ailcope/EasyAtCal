@@ -1,0 +1,23 @@
+{
+  "data": [
+    {
+      "id": "eaw-s1001",
+      "start": "2026-05-10T08:00:00+02:00",
+      "end": "2026-05-10T16:00:00+02:00",
+      "title": "Barista Shift",
+      "location": "Downtown Cafe",
+      "notes": "Opening shift, don't forget keys",
+      "updated_at": "2026-05-01T12:00:00+00:00"
+    },
+    {
+      "id": "eaw-s1002",
+      "start": "2026-05-11T16:00:00+02:00",
+      "end": "2026-05-11T22:00:00+02:00",
+      "title": "Closing Shift",
+      "location": "Downtown Cafe",
+      "notes": null,
+      "updated_at": "2026-05-01T12:00:00+00:00"
+    }
+  ],
+  "next": null
+}
