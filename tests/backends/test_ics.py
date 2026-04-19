@@ -23,14 +23,14 @@ def test_adds_produce_events_in_file(tmp_path: Path):
     backend = IcsBackend(output_path=out, known_shifts=[])
     changes = Changes(adds=[_shift("s1"), _shift("s2")])
 
-    mapping = backend.apply(changes)
+    result = backend.apply(changes)
 
     body = out.read_text()
     assert "BEGIN:VCALENDAR" in body
     assert "SUMMARY:Shift s1" in body
     assert "SUMMARY:Shift s2" in body
-    assert mapping["s1"].startswith("easyatcal-s1")
-    assert mapping["s2"].startswith("easyatcal-s2")
+    assert result.mapping["s1"].startswith("easyatcal-s1")
+    assert result.mapping["s2"].startswith("easyatcal-s2")
 
 
 def test_deletes_remove_events(tmp_path: Path):

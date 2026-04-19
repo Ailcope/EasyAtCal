@@ -35,6 +35,7 @@ def test_apply_adds_creates_events(mock_store_factory):
 
     created_event = MagicMock()
     created_event.calendarItemExternalIdentifier.return_value = "evt-1"
+    store.saveEvent_span_error_.return_value = (True, None)
 
     from easyatcal.backends.eventkit import EventKitBackend
 
@@ -44,9 +45,9 @@ def test_apply_adds_creates_events(mock_store_factory):
         backend = EventKitBackend(
             calendar_name="Work Shifts", calendar_source="iCloud"
         )
-        mapping = backend.apply(Changes(adds=[_shift("s1")]))
+        result = backend.apply(Changes(adds=[_shift("s1")]))
 
-    assert mapping == {"s1": "evt-1"}
+    assert result.mapping == {"s1": "evt-1"}
     store.saveEvent_span_error_.assert_called()
 
 
@@ -61,6 +62,7 @@ def test_apply_deletes_removes_events(mock_store_factory):
     existing = MagicMock()
     existing.calendarItemExternalIdentifier.return_value = "evt-1"
     store.calendarItemWithIdentifier_.return_value = existing
+    store.removeEvent_span_error_.return_value = (True, None)
     mock_store_factory.return_value = store
 
     from easyatcal.backends.eventkit import EventKitBackend
