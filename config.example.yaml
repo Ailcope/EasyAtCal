@@ -20,3 +20,4 @@ backends:
 
 logging:
   level: INFO
+  format: text                 # "text" or "json"

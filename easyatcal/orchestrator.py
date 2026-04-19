@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -8,6 +9,13 @@ from easyatcal.backends.base import ApplyResult, BackendError, CalendarBackend
 from easyatcal.models import Shift
 from easyatcal.state import State, load_state, save_state
 from easyatcal.sync import compute_changes
+
+
+@dataclass
+class SyncSummary:
+    adds: int = 0
+    updates: int = 0
+    deletes: int = 0
 
 
 class ShiftFetcher(Protocol):
@@ -21,7 +29,7 @@ def run_sync(
     lookback_days: int,
     lookahead_days: int,
     now: datetime | None = None,
-) -> None:
+) -> SyncSummary:
     now = now or datetime.now(UTC)
     from_date = (now - timedelta(days=lookback_days)).date()
     to_date = (now + timedelta(days=lookahead_days)).date()
@@ -47,8 +55,20 @@ def run_sync(
         now=now,
     )
 
+    # Count adds vs updates separately by checking existing state.
+    prev_ids = set(state.shift_to_event)
+    added = sum(1 for sid in result.mapping if sid not in prev_ids)
+    updated = sum(1 for sid in result.mapping if sid in prev_ids)
+    summary = SyncSummary(
+        adds=added,
+        updates=updated,
+        deletes=len(result.deleted_uids),
+    )
+
     if raised is not None:
+        raised.summary = summary  # type: ignore[attr-defined]
         raise raised
+    return summary
 
 
 def _persist(
