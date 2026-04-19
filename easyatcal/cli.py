@@ -30,6 +30,25 @@ app.add_typer(state_app, name="state")
 
 EXAMPLE_CONFIG = Path(__file__).parent.parent / "config.example.yaml"
 
+# Override set by the root callback when --config-path is given.
+_CONFIG_OVERRIDE: Path | None = None
+
+
+def _cfg_path() -> Path:
+    return _CONFIG_OVERRIDE if _CONFIG_OVERRIDE is not None else config_path()
+
+
+@app.callback()
+def _root(
+    config_path_override: Path | None = typer.Option(  # noqa: B008
+        None,
+        "--config-path",
+        help="Override the default config file location.",
+    ),
+) -> None:
+    global _CONFIG_OVERRIDE
+    _CONFIG_OVERRIDE = config_path_override
+
 
 # ---------- helpers ----------
 
@@ -62,7 +81,7 @@ def _build_backend(cfg):
 @config_app.command("init")
 def config_init() -> None:
     """Scaffold a config file at the user config dir."""
-    target = config_path()
+    target = _cfg_path()
     if target.exists():
         typer.echo(f"Config already exists at {target}", err=True)
         raise typer.Exit(code=1)
@@ -74,7 +93,7 @@ def config_init() -> None:
 @config_app.command("show")
 def config_show() -> None:
     """Print the effective config with secrets redacted."""
-    cfg = load_config(config_path())
+    cfg = load_config(_cfg_path())
     dumped = cfg.model_dump()
     dumped["easyatwork"]["client_secret"] = "***"
     typer.echo(yaml.safe_dump(dumped, sort_keys=False))
@@ -89,7 +108,7 @@ def sync_cmd(
     ),
 ) -> None:
     """Run one sync pass and exit."""
-    cfg = load_config(config_path())
+    cfg = load_config(_cfg_path())
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
@@ -144,7 +163,7 @@ def watch_cmd(
     """Run sync on a loop until Ctrl-C or SIGTERM."""
     import signal
 
-    cfg = load_config(config_path())
+    cfg = load_config(_cfg_path())
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
@@ -201,7 +220,7 @@ def doctor_cmd() -> None:
     from easyatcal.api import AuthError
 
     failures = 0
-    cfg_file = config_path()
+    cfg_file = _cfg_path()
 
     # 1. Config
     if not cfg_file.exists():
@@ -249,7 +268,7 @@ def auth_test() -> None:
     """Verify that the configured credentials can obtain a token."""
     from easyatcal.api import AuthError
 
-    cfg = load_config(config_path())
+    cfg = load_config(_cfg_path())
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     try:
