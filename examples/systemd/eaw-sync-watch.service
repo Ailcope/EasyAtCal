@@ -1,0 +1,17 @@
+[Unit]
+Description=EasyAtCal Watcher - Syncs easy@work shifts to Calendar
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Ensure eaw-sync is in your PATH, or provide the absolute path to the executable.
+# Example: ExecStart=/home/user/.local/bin/eaw-sync watch
+ExecStart=eaw-sync watch
+Restart=always
+RestartSec=10
+# Optional: Set the configuration path if you have it in a non-default location
+# Environment="EAW_CONFIG_PATH=/home/user/.config/easyatcal/config.yaml"
+
+[Install]
+WantedBy=default.target

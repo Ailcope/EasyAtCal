@@ -130,19 +130,25 @@ class EawClient:
                     continue
                 raise ApiError(f"GET {url} -> {r.status_code} {r.text}")
 
-            payload = r.json()
-            for raw in payload.get("data", []):
-                out.append(
-                    Shift(
-                        id=raw["id"],
-                        start=datetime.fromisoformat(raw["start"]),
-                        end=datetime.fromisoformat(raw["end"]),
-                        title=raw.get("title", "Shift"),
-                        location=raw.get("location"),
-                        notes=raw.get("notes"),
-                        updated_at=datetime.fromisoformat(raw["updated_at"]),
+            try:
+                payload = r.json()
+                for raw in payload.get("data", []):
+                    out.append(
+                        Shift(
+                            id=str(raw["id"]),
+                            start=datetime.fromisoformat(raw["start"]),
+                            end=datetime.fromisoformat(raw["end"]),
+                            title=raw.get("title", "Shift"),
+                            location=raw.get("location"),
+                            notes=raw.get("notes"),
+                            updated_at=datetime.fromisoformat(raw["updated_at"]),
+                        )
                     )
-                )
-            url = payload.get("next")
-            params = None  # next URL already includes cursor
+                url = payload.get("next")
+                params = None  # next URL already includes cursor
+            except (KeyError, TypeError, ValueError) as e:
+                raise ApiError(
+                    f"Unexpected API response shape. Failed to parse: {e}. "
+                    f"Raw payload keys: {list(payload.keys()) if isinstance(payload, dict) else 'not a dict'}"
+                ) from e
         return out
