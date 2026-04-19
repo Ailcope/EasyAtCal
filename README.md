@@ -1,5 +1,10 @@
 # EasyAtCal
 
+[![CI](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml/badge.svg)](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/easyatcal.svg)](https://pypi.org/project/easyatcal/)
+[![Python](https://img.shields.io/pypi/pyversions/easyatcal.svg)](https://pypi.org/project/easyatcal/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 One-way sync of [easy@work](https://www.easyatwork.com) shifts into Apple
 Calendar. Run it on a Mac, iCloud fans out to iPhone/iPad/Watch.
 
