@@ -80,12 +80,36 @@ def config_show() -> None:
 # ---------- sync / watch ----------
 
 @app.command("sync")
-def sync_cmd() -> None:
+def sync_cmd(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Compute changes without touching calendar or state."
+    ),
+) -> None:
     """Run one sync pass and exit."""
     cfg = load_config(config_path())
     configure_logging(level=cfg.logging.level, log_file=log_path())
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
+    if dry_run:
+        from datetime import datetime, timedelta, timezone
+
+        from easyatcal.state import load_state
+        from easyatcal.sync import compute_changes
+
+        now = datetime.now(timezone.utc)
+        from_date = (now - timedelta(days=cfg.sync.lookback_days)).date()
+        to_date = (now + timedelta(days=cfg.sync.lookahead_days)).date()
+        remote = api.fetch_shifts(from_date=from_date, to_date=to_date)
+        state = load_state(state_path())
+        changes = compute_changes(
+            remote, state, known_updated_at=state.shift_updated_at
+        )
+        typer.echo(
+            f"Dry run: {len(changes.adds)} add, "
+            f"{len(changes.updates)} update, "
+            f"{len(changes.deletes)} delete."
+        )
+        return
     run_sync(
         api=api,
         backend=backend,
