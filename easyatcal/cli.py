@@ -22,8 +22,10 @@ from easyatcal.paths import (
 app = typer.Typer(help="EasyAtCal — sync easy@work shifts to Apple Calendar.")
 config_app = typer.Typer(help="Manage the config file.")
 auth_app = typer.Typer(help="Credential checks.")
+state_app = typer.Typer(help="Inspect local sync state.")
 app.add_typer(config_app, name="config")
 app.add_typer(auth_app, name="auth")
+app.add_typer(state_app, name="state")
 
 EXAMPLE_CONFIG = Path(__file__).parent.parent / "config.example.yaml"
 
@@ -144,6 +146,20 @@ def watch_cmd(
             time.sleep(interval_seconds)
     except KeyboardInterrupt:
         typer.echo("\nStopped.")
+
+
+# ---------- state ----------
+
+@state_app.command("show")
+def state_show() -> None:
+    """Print a summary of the local sync state."""
+    from easyatcal.state import load_state
+
+    sp = state_path()
+    state = load_state(sp)
+    typer.echo(f"Path: {sp}")
+    typer.echo(f"Tracked shifts: {len(state.shift_to_event)}")
+    typer.echo(f"Last sync: {state.last_sync or 'never'}")
 
 
 # ---------- doctor ----------
