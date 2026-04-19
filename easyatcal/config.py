@@ -58,6 +58,7 @@ class Config(BaseModel):
 _ENV_OVERRIDES = {
     "EAW_CLIENT_ID": ("easyatwork", "client_id"),
     "EAW_CLIENT_SECRET": ("easyatwork", "client_secret"),
+    "EAW_BASE_URL": ("easyatwork", "base_url"),
 }
 
 

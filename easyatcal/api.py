@@ -93,14 +93,18 @@ class EawClient:
 
     # ----- shifts -----
 
-    def fetch_shifts(self, from_date: date, to_date: date) -> list[Shift]:
+    def fetch_shifts(
+        self, from_date: date, to_date: date, user_id: str | None = None
+    ) -> list[Shift]:
         """Return list[Shift] between from_date (inclusive) and to_date (exclusive)."""
         token = self.authenticate()
         url: str | None = f"{self.base_url}/v1/shifts"
-        params: dict | None = {
+        params: dict[str, str] | None = {
             "from": from_date.isoformat(),
             "to": to_date.isoformat(),
         }
+        if user_id is not None:
+            params["user_id"] = user_id
         headers = {"Authorization": f"Bearer {token}"}
 
         out: list[Shift] = []

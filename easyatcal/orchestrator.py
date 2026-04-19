@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Protocol
 
@@ -19,7 +19,9 @@ class SyncSummary:
 
 
 class ShiftFetcher(Protocol):
-    def fetch_shifts(self, from_date, to_date) -> list[Shift]: ...
+    def fetch_shifts(
+        self, from_date: date, to_date: date, user_id: str | None = None
+    ) -> list[Shift]: ...
 
 
 def run_sync(
@@ -28,13 +30,16 @@ def run_sync(
     state_path: Path,
     lookback_days: int,
     lookahead_days: int,
+    user_id: str | None = None,
     now: datetime | None = None,
 ) -> SyncSummary:
     now = now or datetime.now(UTC)
     from_date = (now - timedelta(days=lookback_days)).date()
     to_date = (now + timedelta(days=lookahead_days)).date()
 
-    remote_shifts = api.fetch_shifts(from_date=from_date, to_date=to_date)
+    remote_shifts = api.fetch_shifts(
+        from_date=from_date, to_date=to_date, user_id=user_id
+    )
     state = load_state(state_path)
     changes = compute_changes(
         remote_shifts, state, known_updated_at=state.shift_updated_at
