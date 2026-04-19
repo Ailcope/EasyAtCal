@@ -78,8 +78,25 @@ permissions needed.
 | `eaw-sync config show` | Print effective config (secrets redacted). |
 | `eaw-sync auth test` | Verify credentials can obtain a token. |
 | `eaw-sync doctor` | Full preflight: config loads, auth works, backend reachable. |
-| `eaw-sync sync` | Run one sync pass and exit. |
-| `eaw-sync watch --interval-seconds N` | Loop until Ctrl-C. |
+| `eaw-sync state show` | Print local state path, tracked-shift count, last sync. |
+| `eaw-sync sync [--dry-run]` | Run one sync pass and exit. |
+| `eaw-sync watch --interval-seconds N` | Loop until Ctrl-C / SIGTERM. |
+
+Global flag: `--config-path PATH` overrides the default config location.
+
+### Exit codes (`sync`)
+
+| Code | Meaning |
+|------|---------|
+| 0 | All changes applied. |
+| 1 | Partial failure — some changes applied, state persisted, backend errored. |
+| 2 | Fatal — config/auth/network failed before any change was written. |
+
+### Shell completions
+
+```bash
+eaw-sync --install-completion        # bash / zsh / fish
+```
 
 ## Troubleshooting
 

@@ -10,23 +10,25 @@ Contains the entire conversation: user messages, assistant reasoning, tool calls
 
 Claude Code stores the todo list inline in the transcript as TodoWrite tool calls — no separate todo file to hand over.
 
-## 2. Design spec
+## 2. Design spec & plan
 
 - `/Users/ailcope/ClaudeCode/EasyAtWork/docs/superpowers/specs/2026-04-19-easyatcal-design.md`
-
-## 3. Implementation plan
-
 - `/Users/ailcope/ClaudeCode/EasyAtWork/docs/superpowers/plans/2026-04-19-easyatcal-implementation.md`
 
-## 4. Project root / packaging
+## 3. Project root / packaging / ops
 
 - `/Users/ailcope/ClaudeCode/EasyAtWork/pyproject.toml`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/.gitignore`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/README.md`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/CHANGELOG.md`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/LICENSE`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/config.example.yaml`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/.pre-commit-config.yaml`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/.github/workflows/ci.yml`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/.github/workflows/publish.yml`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/examples/launchd/com.easyatcal.watch.plist`
 
-## 5. Source — `easyatcal/`
+## 4. Source — `easyatcal/`
 
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/__init__.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/models.py`
@@ -43,7 +45,7 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/backends/ics.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/backends/eventkit.py`
 
-## 6. Tests — `tests/`
+## 5. Tests — `tests/`
 
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/__init__.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/conftest.py`
@@ -56,8 +58,11 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_sync.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_orchestrator.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_config.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_config_path.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_sync.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_auth.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_doctor.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_state.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_logging_setup.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_e2e_ics.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/backends/__init__.py`
@@ -68,13 +73,30 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 ## Deliberately excluded
 
 - `.venv/` — regenerate with `python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'`
-- `.git/` — repo is mirrored at `git@github.com:Ailcope/EasyAtCal.git` (tag `v0.1.0`)
+- `.git/` — repo is mirrored at `git@github.com:Ailcope/EasyAtCal.git` (tag `v0.1.0`; `main` at `HEAD`)
 - `config.yaml`, `state.json`, `token.json`, `*.ics` — never committed; user data / secrets
 - `.pytest_cache/`, `__pycache__/`, `*.pyc` — build artifacts
 
 ## Status at handoff
 
-- 39 tests passing locally (Python 3.12 on macOS). EventKit tests skipped on Linux in CI.
-- Branch: `main` at commit `e3ec355`. Tag `v0.1.0` pushed.
-- Remaining wiring work for a real user: run `eaw-sync config init`, fill in real easy@work OAuth credentials, pick `ics` or `eventkit` backend, then `eaw-sync sync`.
-- Unverified assumptions (flagged in spec "Open questions"): exact easy@work API endpoint paths and pagination shape. The PHP client at `https://github.com/easyatworkas/php-eaw-client` is the reference — inspect it if the default paths in `api.py` are wrong.
+- 53 tests passing locally (Python 3.12 on macOS). EventKit tests skipped on Linux in CI.
+- Coverage gate: CI fails under 85% (see `.github/workflows/ci.yml`).
+- Ruff clean; `.pre-commit-config.yaml` wires ruff + ruff-format + whitespace hooks.
+- Remaining wiring work for a real user: run `eaw-sync config init`, fill in real easy@work OAuth credentials, pick `ics` or `eventkit` backend, then `eaw-sync sync` (or `eaw-sync doctor` first).
+
+## What was added beyond the original 19-task plan
+
+- `LICENSE` (MIT), `CHANGELOG.md`, expanded `README.md`.
+- Atomic state sync: `ApplyResult` + `BackendError(partial)`; orchestrator persists partial progress then re-raises.
+- CLI: `eaw-sync doctor`, `eaw-sync state show`, `eaw-sync sync --dry-run`, global `--config-path` override, `--install-completion`.
+- Sync exit codes (0 clean / 1 partial / 2 fatal) and post-sync summary line.
+- `logging.format: text|json` (JSON formatter for log aggregators).
+- `watch` handles `SIGTERM` gracefully with 1-second sleep slices.
+- API backoff honors `Retry-After` header on 429/5xx.
+- Ruff lint + pre-commit hooks + CI lint stage + 85% coverage gate.
+- PyPI publish workflow on `v*` tags (trusted publisher; configure on pypi.org).
+- launchd agent template at `examples/launchd/com.easyatcal.watch.plist`.
+
+## Unverified assumptions
+
+Flagged in spec "Open questions": exact easy@work API endpoint paths and pagination shape. The PHP client at `https://github.com/easyatworkas/php-eaw-client` is the reference — inspect it if the default paths in `api.py` are wrong.
