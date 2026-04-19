@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import time
+from datetime import UTC
 from pathlib import Path
 
 import typer
@@ -93,12 +94,12 @@ def sync_cmd(
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
     if dry_run:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         from easyatcal.state import load_state
         from easyatcal.sync import compute_changes
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         from_date = (now - timedelta(days=cfg.sync.lookback_days)).date()
         to_date = (now + timedelta(days=cfg.sync.lookahead_days)).date()
         remote = api.fetch_shifts(from_date=from_date, to_date=to_date)
@@ -182,7 +183,7 @@ def doctor_cmd() -> None:
         typer.echo(f"[ OK ] config: loaded from {cfg_file}")
     except Exception as e:
         typer.echo(f"[FAIL] config: {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     configure_logging(level=cfg.logging.level, log_file=log_path())
 
@@ -225,5 +226,5 @@ def auth_test() -> None:
         api.authenticate()
     except AuthError as e:
         typer.echo(f"Auth failed: {e}")
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from e
     typer.echo("OK -- credentials work.")

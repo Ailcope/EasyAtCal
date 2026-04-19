@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from easyatcal.backends.base import Changes
@@ -9,12 +9,12 @@ from easyatcal.models import Shift
 def _shift(id_: str) -> Shift:
     return Shift(
         id=id_,
-        start=datetime(2026, 4, 20, 9, tzinfo=timezone.utc),
-        end=datetime(2026, 4, 20, 17, tzinfo=timezone.utc),
+        start=datetime(2026, 4, 20, 9, tzinfo=UTC),
+        end=datetime(2026, 4, 20, 17, tzinfo=UTC),
         title=f"Shift {id_}",
         location="Oslo",
         notes=None,
-        updated_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
+        updated_at=datetime(2026, 4, 18, tzinfo=UTC),
     )
 
 

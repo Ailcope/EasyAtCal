@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from easyatcal.models import Shift
 from easyatcal.state import State
@@ -8,8 +8,8 @@ from easyatcal.sync import compute_changes
 def _shift(id_: str, updated: str = "2026-04-18T10:00:00+00:00") -> Shift:
     return Shift(
         id=id_,
-        start=datetime(2026, 4, 20, 9, tzinfo=timezone.utc),
-        end=datetime(2026, 4, 20, 17, tzinfo=timezone.utc),
+        start=datetime(2026, 4, 20, 9, tzinfo=UTC),
+        end=datetime(2026, 4, 20, 17, tzinfo=UTC),
         title="t",
         location=None,
         notes=None,
