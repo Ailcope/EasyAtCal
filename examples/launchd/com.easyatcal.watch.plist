@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd agent for EasyAtCal.
+
+  1. Edit ProgramArguments[0] to the absolute path of `eaw-sync`
+     (e.g. /Users/YOU/.venvs/easyatcal/bin/eaw-sync, or `which eaw-sync`).
+  2. Edit StandardOutPath / StandardErrorPath to a writable location.
+  3. Install:
+         cp examples/launchd/com.easyatcal.watch.plist ~/Library/LaunchAgents/
+         launchctl load ~/Library/LaunchAgents/com.easyatcal.watch.plist
+  4. Unload:
+         launchctl unload ~/Library/LaunchAgents/com.easyatcal.watch.plist
+
+  Calendar access must be granted to the terminal / shell that first runs
+  eaw-sync; launchd itself cannot grant it. Run `eaw-sync sync` manually
+  once before relying on this agent.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.easyatcal.watch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/REPLACE/WITH/ABSOLUTE/PATH/TO/eaw-sync</string>
+        <string>sync</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/easyatcal.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/easyatcal.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
