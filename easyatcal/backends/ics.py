@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from icalendar import Calendar, Event
+
+from easyatcal.backends.base import Changes
+from easyatcal.models import Shift
+
+UID_PREFIX = "easyatcal-"
+
+
+def _uid_for(shift_id: str) -> str:
+    return f"{UID_PREFIX}{shift_id}"
+
+
+def _to_event(shift: Shift, uid: str) -> Event:
+    ev = Event()
+    ev.add("uid", uid)
+    ev.add("summary", shift.title)
+    ev.add("dtstart", shift.start)
+    ev.add("dtend", shift.end)
+    ev.add("last-modified", shift.updated_at)
+    if shift.location:
+        ev.add("location", shift.location)
+    if shift.notes:
+        ev.add("description", shift.notes)
+    return ev
+
+
+class IcsBackend:
+    """File-based calendar backend that regenerates the .ics on each apply.
+
+    `known_shifts` is the previous set of shifts the caller knows about — used
+    so we can rewrite the file without losing events unrelated to the current
+    change set.
+    """
+
+    def __init__(self, output_path: Path, known_shifts: list[Shift]) -> None:
+        self.output_path = Path(output_path).expanduser()
+        self._current: dict[str, Shift] = {s.id: s for s in known_shifts}
+
+    def apply(self, changes: Changes) -> dict[str, str]:
+        mapping: dict[str, str] = {}
+
+        for shift in changes.adds:
+            self._current[shift.id] = shift
+            mapping[shift.id] = _uid_for(shift.id)
+
+        for shift, _event_uid in changes.updates:
+            self._current[shift.id] = shift
+            mapping[shift.id] = _uid_for(shift.id)
+
+        delete_uids = set(changes.deletes)
+        to_drop = [
+            sid for sid in self._current
+            if _uid_for(sid) in delete_uids
+        ]
+        for sid in to_drop:
+            self._current.pop(sid, None)
+
+        self._write()
+        return mapping
+
+    def _write(self) -> None:
+        cal = Calendar()
+        cal.add("prodid", "-//EasyAtCal//EN")
+        cal.add("version", "2.0")
+        for shift in self._current.values():
+            cal.add_component(_to_event(shift, _uid_for(shift.id)))
+
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.output_path.with_suffix(self.output_path.suffix + ".tmp")
+        tmp.write_bytes(cal.to_ical())
+        tmp.replace(self.output_path)
