@@ -38,12 +38,27 @@ def _cfg_path() -> Path:
     return _CONFIG_OVERRIDE if _CONFIG_OVERRIDE is not None else config_path()
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        from easyatcal import __version__
+
+        typer.echo(f"easyatcal {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def _root(
     config_path_override: Path | None = typer.Option(  # noqa: B008
         None,
         "--config-path",
         help="Override the default config file location.",
+    ),
+    _version: bool = typer.Option(  # noqa: B008
+        False,
+        "--version",
+        help="Print version and exit.",
+        callback=_version_callback,
+        is_eager=True,
     ),
 ) -> None:
     global _CONFIG_OVERRIDE

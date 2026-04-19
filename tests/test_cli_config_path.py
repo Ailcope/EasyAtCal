@@ -32,3 +32,11 @@ def test_default_config_path_used_when_flag_absent(mock_default, tmp_path: Path)
     # Should call the default resolver because no flag given.
     mock_default.assert_called()
     assert result.exit_code != 0
+
+
+def test_version_flag_prints_version_and_exits():
+    from easyatcal import __version__
+
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.stdout

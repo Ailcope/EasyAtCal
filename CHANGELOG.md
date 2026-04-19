@@ -6,11 +6,20 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-20
+
+### Changed
+- Backends now return `ApplyResult(mapping, deleted_uids)` and raise
+  `BackendError(message, partial)` on failure. The orchestrator catches the
+  error, persists partial progress, then re-raises — so a crash mid-apply no
+  longer leaves `state.json` out of sync with the calendar.
+
 ### Added
 - `eaw-sync doctor` preflight command: checks config, auth, backend wiring.
 - `eaw-sync state show`: prints local state path, tracked-shift count, last sync.
 - `eaw-sync sync --dry-run`: computes adds/updates/deletes without touching
   the calendar or state.
+- Global `--config-path` override and `--version` flag.
 - Defined `sync` exit codes: 0 clean, 1 partial failure (`BackendError`),
   2 fatal (config/auth/network).
 - Post-sync summary line (`Sync complete: X added, Y updated, Z deleted.`);
@@ -24,15 +33,10 @@ All notable changes to this project are documented here. Format follows
   auto-running `sync` every 15 minutes.
 - Ruff config + `.pre-commit-config.yaml`; CI now lints and enforces 85%
   coverage.
+- `py.typed` marker so downstream projects see EasyAtCal's type hints.
 - `CHANGELOG.md`, expanded `README.md`, `LICENSE` (MIT).
 - GitHub Actions workflow to publish to PyPI on `v*` tags via trusted
   publisher.
-
-### Changed
-- Backends now return `ApplyResult(mapping, deleted_uids)` and raise
-  `BackendError(message, partial)` on failure. The orchestrator catches the
-  error, persists partial progress, then re-raises — so a crash mid-apply no
-  longer leaves `state.json` out of sync with the calendar.
 
 ## [0.1.0] — 2026-04-19
 
