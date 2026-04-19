@@ -90,7 +90,7 @@ def sync_cmd(
 ) -> None:
     """Run one sync pass and exit."""
     cfg = load_config(config_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path())
+    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
     if dry_run:
@@ -113,14 +113,26 @@ def sync_cmd(
             f"{len(changes.deletes)} delete."
         )
         return
-    run_sync(
-        api=api,
-        backend=backend,
-        state_path=state_path(),
-        lookback_days=cfg.sync.lookback_days,
-        lookahead_days=cfg.sync.lookahead_days,
+    from easyatcal.backends.base import BackendError
+
+    try:
+        summary = run_sync(
+            api=api,
+            backend=backend,
+            state_path=state_path(),
+            lookback_days=cfg.sync.lookback_days,
+            lookahead_days=cfg.sync.lookahead_days,
+        )
+    except BackendError as e:
+        typer.echo(f"Sync partial failure: {e}")
+        raise typer.Exit(code=1) from e
+    except Exception as e:
+        typer.echo(f"Sync failed: {e}")
+        raise typer.Exit(code=2) from e
+    typer.echo(
+        f"Sync complete: {summary.adds} added, "
+        f"{summary.updates} updated, {summary.deletes} deleted."
     )
-    typer.echo("Sync complete.")
 
 
 @app.command("watch")
@@ -131,7 +143,7 @@ def watch_cmd(
 ) -> None:
     """Run sync on a loop until Ctrl-C."""
     cfg = load_config(config_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path())
+    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     backend = _build_backend(cfg)
     try:
@@ -185,7 +197,7 @@ def doctor_cmd() -> None:
         typer.echo(f"[FAIL] config: {e}")
         raise typer.Exit(code=1) from e
 
-    configure_logging(level=cfg.logging.level, log_file=log_path())
+    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
 
     # 2. Auth
     try:
@@ -220,7 +232,7 @@ def auth_test() -> None:
     from easyatcal.api import AuthError
 
     cfg = load_config(config_path())
-    configure_logging(level=cfg.logging.level, log_file=log_path())
+    configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
     api = _build_api_client(cfg)
     try:
         api.authenticate()

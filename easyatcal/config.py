@@ -37,6 +37,7 @@ class BackendsSettings(BaseModel):
 
 class LoggingSettings(BaseModel):
     level: str = "INFO"
+    format: Literal["text", "json"] = "text"
 
 
 class Config(BaseModel):

@@ -82,3 +82,42 @@ def test_sync_dry_run_skips_backend_and_state(
     backend.apply.assert_not_called()
     assert "dry run" in result.stdout.lower()
     assert "add" in result.stdout.lower()
+
+
+@patch("easyatcal.cli.run_sync")
+@patch("easyatcal.cli._build_backend")
+@patch("easyatcal.cli._build_api_client")
+@patch("easyatcal.cli.configure_logging")
+@patch("easyatcal.cli.load_config")
+def test_sync_partial_failure_exits_1(
+    mock_cfg, mock_log, mock_api, mock_back, mock_run
+):
+    from easyatcal.backends.base import ApplyResult, BackendError
+
+    mock_cfg.return_value = MagicMock(
+        sync=MagicMock(lookback_days=7, lookahead_days=90),
+        logging=MagicMock(level="INFO"),
+    )
+    mock_run.side_effect = BackendError("half done", ApplyResult(mapping={"s1": "e1"}))
+
+    result = runner.invoke(app, ["sync"])
+    assert result.exit_code == 1, result.stdout
+    assert "half done" in result.stdout.lower() or "partial" in result.stdout.lower()
+
+
+@patch("easyatcal.cli.run_sync")
+@patch("easyatcal.cli._build_backend")
+@patch("easyatcal.cli._build_api_client")
+@patch("easyatcal.cli.configure_logging")
+@patch("easyatcal.cli.load_config")
+def test_sync_fatal_failure_exits_2(
+    mock_cfg, mock_log, mock_api, mock_back, mock_run
+):
+    mock_cfg.return_value = MagicMock(
+        sync=MagicMock(lookback_days=7, lookahead_days=90),
+        logging=MagicMock(level="INFO"),
+    )
+    mock_run.side_effect = RuntimeError("network down")
+
+    result = runner.invoke(app, ["sync"])
+    assert result.exit_code == 2, result.stdout
