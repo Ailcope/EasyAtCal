@@ -11,6 +11,7 @@ class State:
     shift_to_event: dict[str, str] = field(default_factory=dict)
     shift_updated_at: dict[str, str] = field(default_factory=dict)
     last_sync: str | None = None
+    preferences: dict[str, bool] = field(default_factory=dict)
 
 
 def load_state(path: Path) -> State:
@@ -22,6 +23,7 @@ def load_state(path: Path) -> State:
             shift_to_event=dict(data.get("shift_to_event", {})),
             shift_updated_at=dict(data.get("shift_updated_at", {})),
             last_sync=data.get("last_sync"),
+            preferences=dict(data.get("preferences", {})),
         )
     except (json.JSONDecodeError, ValueError):
         backup = path.with_suffix(path.suffix + ".bak")

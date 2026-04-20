@@ -32,13 +32,16 @@ def _seeded_store(tmp_path: Path, token: str = FAKE_JWT) -> SessionStore:
     return store
 
 
+from unittest.mock import patch
+
 def test_no_token_raises_authenticate(tmp_path: Path) -> None:
-    client = SessionEawClient(
-        shifts_url=SHIFTS_URL,
-        session_store=SessionStore(tmp_path / "missing.json"),
-    )
-    with pytest.raises(AuthError, match="No access token"):
-        client.authenticate()
+    with patch("keyring.get_password", return_value=None):
+        client = SessionEawClient(
+            shifts_url=SHIFTS_URL,
+            session_store=SessionStore(tmp_path / "missing.json"),
+        )
+        with pytest.raises(AuthError, match="No access token"):
+            client.authenticate()
 
 
 @respx.mock
