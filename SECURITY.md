@@ -9,7 +9,7 @@ production.
 
 **Do not file a public GitHub issue.**
 
-Email the maintainer with the subject `[SECURITY] EasyAtCal`. Include:
+Email the maintainer at `security@ailcope.dev` with the subject `[SECURITY] EasyAtCal`. Include:
 
 - Affected version (`eaw-sync --version`).
 - Reproduction steps or proof-of-concept.
