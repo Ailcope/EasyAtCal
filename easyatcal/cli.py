@@ -274,6 +274,40 @@ def sync_cmd(
         f"{summary.updates} updated, {summary.deletes} deleted."
     )
 
+    if cfg.backend == "ics":
+        _prompt_ics_import(cfg.backends.ics.output_path)
+
+
+def _prompt_ics_import(output_path: str) -> None:
+    import locale
+    import os
+    import subprocess
+    import sys
+    import webbrowser
+
+    ics_path = os.path.expanduser(output_path)
+    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
+    fr = lang.lower().startswith("fr")
+
+    typer.secho("\n📅 " + ("Synchronisation réussie !" if fr else "Calendar Sync Successful!"), fg="green", bold=True)
+    typer.echo(("Vos horaires ont été enregistrés dans : " if fr else "Your shifts were saved to: ") + ics_path)
+
+    prompt_local = ("Voulez-vous ouvrir votre calendrier maintenant pour importer ces horaires ?" if fr 
+                    else "Would you like to open your local Calendar app now to import these shifts?")
+    if typer.confirm(prompt_local):
+        typer.secho("Ouverture du calendrier..." if fr else "Opening calendar app...", fg="cyan")
+        if sys.platform == "darwin":
+            subprocess.run(["open", ics_path], check=False)
+        elif sys.platform == "win32":
+            os.startfile(ics_path)  # type: ignore
+        else:
+            subprocess.run(["xdg-open", ics_path], check=False)
+
+    prompt_google = "Préférez-vous importer ceci dans Google Agenda ?" if fr else "Would you prefer to import this into Google Calendar?"
+    if typer.confirm(prompt_google):
+        typer.secho("Ouverture de Google Agenda..." if fr else "Opening Google Calendar...", fg="cyan")
+        webbrowser.open("https://calendar.google.com/calendar/r/settings/export")
+
 
 @app.command("watch")
 def watch_cmd(

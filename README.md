@@ -6,202 +6,119 @@
 [![Python](https://img.shields.io/pypi/pyversions/easyatcal.svg)](https://pypi.org/project/easyatcal/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-One-way sync of [easy@work](https://www.easyatwork.com) shifts into Apple
-Calendar. Run it on a Mac, iCloud fans out to iPhone/iPad/Watch.
+A CLI tool for syncing your [easy@work](https://www.easyatwork.com) shifts into Apple Calendar, Google Calendar, or standard ICS files.
 
-- Read-only against easy@work; never writes back.
-- Two backends: native macOS **EventKit** (recommended) or portable **ICS** file.
-- State-tracked: unchanged shifts are skipped; edits and deletions propagate.
-- Open-source friendly: code is public, your `config.yaml` / `state.json` stay
-  local (see `.gitignore`).
+It runs locally, fetches your upcoming shifts, and pushes them to your preferred calendar app. It can also be run as a daemon to keep your calendar up to date in the background.
 
-## Install
+*   **Automated Login**: No public API required. It uses Playwright to securely log in via a headless browser and extract a session token.
+*   **Two Backends**: Native macOS **EventKit** integration (pushes directly to Apple Calendar) or portable **ICS** file generation (supports interactive import prompts for Google Calendar and Windows Outlook).
+*   **Idempotent**: State-tracked logic means unchanged shifts are skipped, while schedule updates and cancellations propagate automatically.
+*   **Bilingual CLI**: Automatically detects English or French system locales and adjusts interactive prompts.
 
-```bash
-pip install easyatcal                   # core + ICS backend
-pip install 'easyatcal[eventkit]'       # + macOS EventKit backend
-pip install 'easyatcal[playwright]'     # + headless-browser login (default auth)
-playwright install chromium             # one-time ~200 MB browser download
-```
-
-Python 3.11+. macOS for EventKit; any OS for ICS.
-
-## Authentication
-
-easy@work has no public developer API. The default auth mode (`user`) logs
-a headless Chromium instance into `app.easyatwork.com` with your real
-credentials, captures the session (cookies **and** the Bearer JWT the
-SPA writes to `localStorage`), and replays the JWT as
-`Authorization: Bearer …` on every request to the regional API host
-(e.g. `eu-west-3.api.easyatwork.com`). Your password is never stored on
-disk — it lives only in the `EAW_PASSWORD` env var (or is prompted
-interactively).
-
-```bash
-EAW_PASSWORD='...' eaw-sync login       # persists storage_state; do once per year (JWT ~1y)
-eaw-sync logout                          # wipe session
-```
-
-`storage_state` is written to `~/.cache/easyatcal/session.json` (0600)
-via Playwright. The JWT is extracted from it at request time — no
-separate token file.
-
-An alternate `client` mode (OAuth client_credentials) is scaffolded in
-the code for forward-compat — if easy@work ever publishes an API, flip
-`auth_mode: client` and fill in the OAuth creds.
+---
 
 ## Quickstart
 
+### 1. Install
+
+Install the core application and the Playwright browser dependencies (required for headless login).
+
 ```bash
-eaw-sync config init                    # scaffold config
-$EDITOR ~/.config/easyatcal/config.yaml # set email, api_url, customer_id, employee_id
-EAW_PASSWORD='...' eaw-sync login       # one-time headless login (JWT ~1y)
-eaw-sync doctor                         # check config + session + backend
-eaw-sync sync                           # one shot
-eaw-sync watch --interval-seconds 900   # loop every 15 min
+pip install 'easyatcal[playwright]'
+playwright install chromium
+```
+*(If you are on macOS and want native Apple Calendar integration, use `pip install 'easyatcal[eventkit,playwright]'`)*
+
+### 2. Configure
+
+Scaffold the default configuration file:
+
+```bash
+eaw-sync config init
 ```
 
-### Discovering your `customer_id` + `employee_id`
-
-Open DevTools → Network in `app.easyatwork.com`, filter XHR, load your
-schedule. The request URL contains both:
-
-```
-https://eu-west-3.api.easyatwork.com/customers/2571/employees/1464727/shifts?from=…
-                                              ^^^^            ^^^^^^^
-                                          customer_id     employee_id
-```
-
-`api_url` is the scheme + host (`https://eu-west-3.api.easyatwork.com`).
-The region segment varies per tenant.
-
-## Configure
-
-Minimal `config.yaml` (user mode):
+Now, open the configuration file (located at `~/.config/easyatcal/config.yaml` on Linux or `~/Library/Application Support/easyatcal/config.yaml` on macOS) and fill in your details:
 
 ```yaml
 easyatwork:
-  auth_mode: user
-  email: "me@example.com"
-  login_url: "https://app.easyatwork.com/"
-  app_url: "https://app.easyatwork.com"
-  api_url: "https://eu-west-3.api.easyatwork.com"   # region host from DevTools
-  customer_id: 2571                                  # from the shifts URL
-  employee_id: 1464727                               # from the shifts URL
-  ui_version: "2.313.0"                              # mimic SPA header
-
-sync:
-  lookback_days: 7
-  lookahead_days: 90
-
-backend: eventkit                  # or "ics"
-
-backends:
-  eventkit:
-    calendar_name: "Work Shifts"   # must exist in Calendar.app
-    calendar_source: "iCloud"
-  ics:
-    output_path: "~/Documents/easyatwork-shifts.ics"
-
-logging:
-  level: INFO
+  email: "your.email@example.com"
+  api_url: "https://eu-west-3.api.easyatwork.com"   # Check your DevTools for your specific region
+  customer_id: 1234                                 # Found in DevTools URL
+  employee_id: 1234567                              # Found in DevTools URL
 ```
 
-Env overrides: any `easyatwork.*` field is overridable via `EAW_*` (e.g.
-`EAW_CLIENT_SECRET`).
+> **How to find your `customer_id` and `employee_id`:**
+> 1. Open your browser and log in to [app.easyatwork.com](https://app.easyatwork.com).
+> 2. Open Developer Tools (F12) -> Go to the **Network** tab.
+> 3. Click on your schedule. Look for a network request starting with `shifts?from=...`
+> 4. Look at the URL of that request: `https://eu-west-3.api.easyatwork.com/customers/<customer_id>/employees/<employee_id>/shifts`
+
+### 3. Log In
+
+Run the interactive login command. It prompts securely for your password, launches a headless Chromium browser, logs you in, and saves your session token securely.
+
+```bash
+eaw-sync login
+```
+
+### 4. Sync Your Calendar
+
+Run the sync command. If you are using the default `.ics` backend, it will download your shifts and interactively ask if you want to open Apple Calendar, Windows Outlook, or Google Calendar to complete the import.
+
+```bash
+eaw-sync sync
+```
+
+## Background Sync
+
+To keep your calendar up to date continuously, run EasyAtCal in daemon mode:
+
+```bash
+eaw-sync watch --interval-seconds 900   # Syncs every 15 minutes
+```
+
+*Note: Your login token expires roughly once a year. If the daemon starts failing with authentication errors, simply run `eaw-sync login` again.*
 
 ## Backends
 
-**EventKit (macOS).** Writes directly to a dedicated calendar in Calendar.app.
+### 1. ICS (Cross-platform)
+Generates a portable `.ics` file locally. When you run `eaw-sync sync`, the CLI interactively offers to open your local calendar app or open the Google Calendar import page.
 
-**IMPORTANT:** You must create the target calendar manually *before* your first sync!
-1. Open **Calendar.app**
-2. Go to **File → New Calendar** and choose the source (e.g., `iCloud`)
-3. Name it exactly what you put in your config (e.g., "Work Shifts")
-4. Run `eaw-sync sync`. It will trigger a macOS permission prompt.
-5. Grant access when prompted (or in *System Settings → Privacy & Security → Calendars*).
+### 2. EventKit (macOS Only)
+Writes directly to a dedicated calendar in the macOS Calendar.app via native APIs.
 
-**ICS.** Writes a single `.ics` file. Subscribe to it from Calendar.app (or any
-calendar client) via `File → New Calendar Subscription`. Portable, no
-permissions needed.
+**IMPORTANT:** You must create the target calendar manually *before* your first sync.
+1. Open **Calendar.app**.
+2. Go to **File → New Calendar** and choose the source (e.g., `iCloud`).
+3. Name it exactly what you put in your config (e.g., `EasyAtWork`).
+4. Update your config: set `backend: eventkit`.
+5. Run `eaw-sync sync`.
+6. Grant calendar access when macOS prompts you.
 
-## Commands
+## CLI Commands
 
-| Command | What |
+| Command | Description |
 |---------|------|
-| `eaw-sync config init` | Scaffold config file. |
-| `eaw-sync config show` | Print effective config (secrets redacted). |
-| `eaw-sync auth test` | Verify credentials can obtain a token. |
-| `eaw-sync doctor` | Full preflight: config loads, auth works, backend reachable. |
-| `eaw-sync state show` | Print local state path, tracked-shift count, last sync. |
-| `eaw-sync sync [--dry-run]` | Run one sync pass and exit. |
-| `eaw-sync watch --interval-seconds N` | Loop until Ctrl-C / SIGTERM. |
-
-Global flag: `--config-path PATH` overrides the default config location.
+| `eaw-sync config init` | Scaffold the configuration file. |
+| `eaw-sync config show` | Print active configuration (secrets redacted). |
+| `eaw-sync login` | Opens a headless browser to log in and save your session token. |
+| `eaw-sync doctor` | Checks config validity, token liveliness, and API reachability. |
+| `eaw-sync sync` | Run a single sync pass. |
+| `eaw-sync sync --dry-run` | Diff remote shifts against local state without writing. |
+| `eaw-sync watch` | Run the sync in an infinite loop. |
+| `eaw-sync --install-completion` | Install shell autocomplete (bash/zsh/fish). |
 
 ### Exit codes (`sync`)
 
 | Code | Meaning |
 |------|---------|
-| 0 | All changes applied. |
-| 1 | Partial failure — some changes applied, state persisted, backend errored. |
-| 2 | Fatal — config/auth/network failed before any change was written. |
+| 0 | All changes applied successfully. |
+| 1 | Partial failure (some changes applied, backend error on others). |
+| 2 | Fatal (config/auth/network failed before writing). |
 
-### Shell completions
+## Security
 
-```bash
-eaw-sync --install-completion        # bash / zsh / fish
-```
-
-## Known limitations
-
-- **No public API.** easy@work does not publish developer docs. The
-  default `user` auth mode scrapes the web app via Playwright, extracts
-  the Bearer JWT the SPA stores in `localStorage`, and replays it
-  against the regional API host. Depends on the SPA's private
-  endpoints — if they change shape, parsing may need a tweak.
-- **`api_url` / `customer_id` / `employee_id` are tenant-specific.**
-  See *Discovering your customer_id + employee_id* above. Payload
-  parsing auto-detects common shapes (`{"data": [...]}`,
-  `{"results": [...]}`, bare list, `id`/`uuid`/`shiftId`,
-  `start`/`starts_at`/`from`, `schedule.customer.name`, etc) —
-  unexpected shapes raise `ApiError` with the observed top-level keys.
-- **OAuth (`client` mode) is unverified.** Kept in-tree for forward-compat
-  should easy@work publish a developer API, but there is no public
-  reference client (`php-eaw-client` does not exist as a public repo).
-
-## Troubleshooting
-
-- **"Calendar 'Work Shifts' not found"** — create it in Calendar.app first;
-  source name must match (`iCloud`, `On My Mac`, etc).
-- **Calendar permission denied** — System Settings → Privacy & Security →
-  Calendars → enable for your terminal / launchd agent.
-- **`auth failed`** — run `eaw-sync doctor`, check `EAW_CLIENT_SECRET`, confirm
-  `base_url`.
-- **Stale events after delete** — state entries auto-prune once the backend
-  confirms the delete. Corrupt `state.json` is quarantined and rebuilt.
-
-## Auto-run on macOS
-
-A sample launchd plist is in `examples/launchd/com.easyatcal.watch.plist`.
-Load with:
-
-```bash
-cp examples/launchd/com.easyatcal.watch.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.easyatcal.watch.plist
-```
-
-## Contributing
-
-If you fork and want to publish your own PyPI package via GitHub Actions:
-1. Ensure you have claimed your project name on PyPI.
-2. Go to **PyPI -> Manage -> Publishing**.
-3. Add a "Trusted Publisher" configured for your GitHub repository (e.g. `Ailcope/EasyAtCal`) pointing to the `publish.yml` workflow and the `pypi` environment.
-
-## Design
-
-- `docs/superpowers/specs/2026-04-19-easyatcal-design.md` — full design.
-- `docs/superpowers/plans/2026-04-19-easyatcal-implementation.md` — build plan.
+Your easy@work password is **never stored on disk**. The configuration file only stores your email. When you run `eaw-sync login`, the password is used once to drive the browser, and only the resulting JSON Web Token (JWT) is saved locally in `~/.cache/easyatcal/session.json` (with strict `0600` permissions).
 
 ## License
 

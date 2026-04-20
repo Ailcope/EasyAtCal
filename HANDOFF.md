@@ -39,6 +39,9 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/orchestrator.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/cli.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/paths.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/api_session.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/session.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/auth_user.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/logging_setup.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/backends/__init__.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/easyatcal/backends/base.py`
@@ -61,6 +64,9 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_config_path.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_sync.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_auth.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_login.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_api_session.py`
+- `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_session.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_doctor.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_cli_state.py`
 - `/Users/ailcope/ClaudeCode/EasyAtWork/tests/test_logging_setup.py`
@@ -82,7 +88,15 @@ Claude Code stores the todo list inline in the transcript as TodoWrite tool call
 - 53 tests passing locally (Python 3.12 on macOS). EventKit tests skipped on Linux in CI.
 - Coverage gate: CI fails under 85% (see `.github/workflows/ci.yml`).
 - Ruff clean; `.pre-commit-config.yaml` wires ruff + ruff-format + whitespace hooks.
-- Remaining wiring work for a real user: run `eaw-sync config init`, fill in real easy@work OAuth credentials, pick `ics` or `eventkit` backend, then `eaw-sync sync` (or `eaw-sync doctor` first).
+- Remaining wiring work for a real user: run `eaw-sync config init`, fill in real easy@work parameters (`customer_id`, `employee_id`), run `eaw-sync login` to generate the session JWT via headless Playwright, pick `ics` or `eventkit` backend, then `eaw-sync sync` (or `eaw-sync doctor` first).
+
+## Auth Narrative Pivot
+
+**Critical context:** We pivoted away from pure OAuth `client_credentials`.
+Authentication is now handled via **JWT Bearer** token extracted from Playwright's `localStorage` after a headless UI login. The token is replayed against `<region>.api.easyatwork.com/customers/{cid}/employees/{eid}/shifts`.
+- *Commit Ref:* `48cb8b0` (JWT pivot) and `323f338` (session-cookie pivot intermediate).
+- No refresh flow is implemented: JWT expires in ~1y; users must rerun `eaw-sync login` when a 401 occurs.
+- `auth_user.py` uses Playwright to capture this token. It needs a live Playwright run for smoke verification before claiming absolute production-readiness.
 
 ## What was added beyond the original 19-task plan
 
