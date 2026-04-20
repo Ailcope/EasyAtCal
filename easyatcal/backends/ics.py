@@ -15,10 +15,26 @@ def _uid_for(shift_id: str) -> str:
     return f"{UID_PREFIX}{shift_id}"
 
 
-def _to_event(shift: Shift, uid: str) -> Any:
+def _to_event(
+    shift: Shift,
+    uid: str,
+    event_title_format: str = "{title}",
+    alarm_minutes_before: int | None = None,
+) -> Any:
+    from datetime import timedelta
+
+    from icalendar import Alarm
     ev = Event()  # type: ignore[no-untyped-call]
     ev.add("uid", uid)
-    ev.add("summary", shift.title)
+    
+    # Format the title
+    title = event_title_format.format(
+        title=shift.title,
+        location=shift.location or "",
+        notes=shift.notes or "",
+    ).strip()
+    
+    ev.add("summary", title)
     ev.add("dtstart", shift.start)
     ev.add("dtend", shift.end)
     ev.add("last-modified", shift.updated_at)
@@ -26,6 +42,14 @@ def _to_event(shift: Shift, uid: str) -> Any:
         ev.add("location", shift.location)
     if shift.notes:
         ev.add("description", shift.notes)
+        
+    if alarm_minutes_before is not None:
+        alarm = Alarm()
+        alarm.add("action", "DISPLAY")
+        alarm.add("description", "Shift Reminder")
+        alarm.add("trigger", timedelta(minutes=-alarm_minutes_before))
+        ev.add_component(alarm)
+        
     return ev
 
 
@@ -37,9 +61,17 @@ class IcsBackend:
     change set.
     """
 
-    def __init__(self, output_path: Path, known_shifts: list[Shift]) -> None:
+    def __init__(
+        self,
+        output_path: Path,
+        known_shifts: list[Shift],
+        event_title_format: str = "{title}",
+        alarm_minutes_before: int | None = None,
+    ) -> None:
         self.output_path = Path(output_path).expanduser()
         self._current: dict[str, Shift] = {s.id: s for s in known_shifts}
+        self.event_title_format = event_title_format
+        self.alarm_minutes_before = alarm_minutes_before
 
     def apply(self, changes: Changes) -> ApplyResult:
         mapping: dict[str, str] = {}
@@ -74,7 +106,12 @@ class IcsBackend:
         cal.add("prodid", "-//EasyAtCal//EN")
         cal.add("version", "2.0")
         for shift in self._current.values():
-            cal.add_component(_to_event(shift, _uid_for(shift.id)))
+            cal.add_component(_to_event(
+                shift,
+                _uid_for(shift.id),
+                self.event_title_format,
+                self.alarm_minutes_before,
+            ))
 
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.output_path.with_suffix(self.output_path.suffix + ".tmp")

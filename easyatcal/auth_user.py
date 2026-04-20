@@ -52,6 +52,19 @@ def do_login(
         try:
             context = browser.new_context()
             page = context.new_page()
+            
+            discovered_meta: dict[str, str | int] = {}
+            import re
+
+            def on_request(request):
+                match = re.search(r"^(https?://[^/]+)/customers/(\d+)/employees/(\d+)", request.url)
+                if match:
+                    discovered_meta["api_url"] = match.group(1)
+                    discovered_meta["customer_id"] = int(match.group(2))
+                    discovered_meta["employee_id"] = int(match.group(3))
+
+            page.on("request", on_request)
+
             page.goto(cfg.login_url, wait_until="domcontentloaded")
 
             try:
@@ -90,6 +103,25 @@ def do_login(
                     f"Check credentials or selectors."
                 )
 
-            context.storage_state(path=str(storage_path))
+            # Wait a little longer just in case the API request hasn't fired yet
+            if not discovered_meta:
+                try:
+                    page.wait_for_timeout(3000)
+                except PWTimeout:
+                    pass
+
+            state = context.storage_state()
+            if discovered_meta:
+                state["eaw_meta"] = discovered_meta
+            
+            import json
+            import os
+            tmp = storage_path.with_suffix(storage_path.suffix + ".tmp")
+            tmp.write_text(json.dumps(state))
+            os.replace(tmp, storage_path)
+            try:
+                os.chmod(storage_path, 0o600)
+            except OSError:
+                pass
         finally:
             browser.close()

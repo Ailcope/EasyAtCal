@@ -105,25 +105,32 @@ def _build_api_client(cfg: Config) -> ShiftFetcher:
             token_cache=token_cache_path(),
         )
     # auth_mode == "user" — JWT Bearer mode (token from localStorage)
+    session_store = SessionStore(session_state_path())
     return SessionEawClient(
-        shifts_url=cfg.easyatwork.shifts_url(),
-        session_store=SessionStore(session_state_path()),
+        shifts_url=cfg.easyatwork.shifts_url(session_store.eaw_meta()),
+        session_store=session_store,
         origin=cfg.easyatwork.app_url,
         ui_version=cfg.easyatwork.ui_version,
     )
 
 
 def _build_backend(cfg: Config) -> CalendarBackend:
+    title_fmt = cfg.sync.event_title_format
+    alarm_min = cfg.sync.alarm_minutes_before
     if cfg.backend == "ics":
         return IcsBackend(
             output_path=Path(cfg.backends.ics.output_path).expanduser(),
             known_shifts=[],
+            event_title_format=title_fmt,
+            alarm_minutes_before=alarm_min,
         )
     if cfg.backend == "eventkit":
         from easyatcal.backends.eventkit import EventKitBackend
         return EventKitBackend(
             calendar_name=cfg.backends.eventkit.calendar_name,
             calendar_source=cfg.backends.eventkit.calendar_source,
+            event_title_format=title_fmt,
+            alarm_minutes_before=alarm_min,
         )
     raise RuntimeError(f"Unknown backend: {cfg.backend}")
 
@@ -307,6 +314,90 @@ def _prompt_ics_import(output_path: str) -> None:
     if typer.confirm(prompt_google):
         typer.secho("Ouverture de Google Agenda..." if fr else "Opening Google Calendar...", fg="cyan")
         webbrowser.open("https://calendar.google.com/calendar/r/settings/export")
+
+
+@app.command("schedule")
+def schedule_cmd(
+    install: bool = typer.Option(
+        False, "--install", help="Install the background job automatically (macOS/Linux only)."
+    ),
+    interval_hours: int = typer.Option(
+        6, "--interval-hours", help="How often to run the background sync (hours)."
+    ),
+) -> None:
+    """Set up a background task to run eaw-sync automatically."""
+    import os
+    import sys
+    import sysconfig
+
+    # Get the absolute path to the eaw-sync executable
+    bin_path = os.path.join(sysconfig.get_path("scripts"), "eaw-sync")
+    if not os.path.exists(bin_path):
+        # Fallback to sys.executable and `-m easyatcal.cli`? Or just assume it's in PATH
+        bin_path = "eaw-sync"
+
+    if sys.platform == "darwin":
+        plist_path = Path.home() / "Library/LaunchAgents/com.easyatcal.sync.plist"
+        plist_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.easyatcal.sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{bin_path}</string>
+        <string>sync</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>{interval_hours * 3600}</integer>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>"""
+        if install:
+            import subprocess
+            plist_path.parent.mkdir(parents=True, exist_ok=True)
+            plist_path.write_text(plist_content)
+            subprocess.run(["launchctl", "unload", str(plist_path)], capture_output=True, check=False)
+            res = subprocess.run(["launchctl", "load", str(plist_path)], capture_output=True, check=False)
+            if res.returncode == 0:
+                typer.secho(f"Successfully installed background sync via launchd (runs every {interval_hours}h).", fg="green")
+            else:
+                typer.secho(f"Failed to load launchd agent: {res.stderr.decode()}", fg="red")
+        else:
+            typer.echo(f"To schedule on macOS, save the following to {plist_path} and run `launchctl load {plist_path}`:")
+            typer.echo(plist_content)
+
+    elif sys.platform == "linux":
+        cron_line = f"0 */{interval_hours} * * * {bin_path} sync >> {log_path()} 2>&1"
+        if install:
+            import subprocess
+            res = subprocess.run(["crontab", "-l"], capture_output=True, text=True, check=False)
+            current_cron = res.stdout if res.returncode == 0 else ""
+            if "eaw-sync" not in current_cron:
+                new_cron = current_cron + f"\n# EasyAtCal Auto-Sync\n{cron_line}\n"
+                proc = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
+                proc.communicate(input=new_cron)
+                typer.secho(f"Successfully installed background sync via crontab (runs every {interval_hours}h).", fg="green")
+            else:
+                typer.secho("eaw-sync is already in your crontab.", fg="yellow")
+        else:
+            typer.echo("To schedule on Linux, add the following line to your crontab (`crontab -e`):")
+            typer.echo(cron_line)
+
+    elif sys.platform == "win32":
+        task_cmd = f'schtasks /create /tn "EasyAtCalSync" /tr "{bin_path} sync" /sc hourly /mo {interval_hours}'
+        if install:
+            import subprocess
+            res = subprocess.run(task_cmd, shell=True, capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                typer.secho(f"Successfully created Windows scheduled task (runs every {interval_hours}h).", fg="green")
+            else:
+                typer.secho(f"Failed to create task (try running terminal as Administrator): {res.stderr}", fg="red")
+        else:
+            typer.echo("To schedule on Windows, open an Administrator Command Prompt and run:")
+            typer.echo(task_cmd)
 
 
 @app.command("watch")
