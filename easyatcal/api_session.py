@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import time
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -210,23 +210,37 @@ def _parse_shift(raw: dict[str, Any]) -> Shift:
 
     # Title: prefer schedule.customer.name if included (matches `with[]`)
     title = pick("title", "name", "label")
-    if title is None:
-        schedule = raw.get("schedule")
-        if isinstance(schedule, dict):
-            customer = schedule.get("customer")
-            if isinstance(customer, dict):
+    location = pick("location", "place", "site")
+    notes = pick("notes", "description", "comments")
+    
+    schedule = raw.get("schedule")
+    if isinstance(schedule, dict):
+        customer = schedule.get("customer")
+        if isinstance(customer, dict):
+            if title is None:
                 title = customer.get("name")
+            
+            # If no direct location, try to extract address from customer
+            if location is None:
+                addr_parts = []
+                for k in ("address1", "address2", "postal_code", "city"):
+                    val = customer.get(k)
+                    if val and str(val).strip():
+                        addr_parts.append(str(val).strip())
+                if addr_parts:
+                    location = ", ".join(addr_parts)
+
     if not title:
         title = "Shift"
 
     return Shift(
         id=str(id_val),
-        start=_parse_dt(str(start_val)),
-        end=_parse_dt(str(end_val)),
+        start=_parse_dt(start_val),
+        end=_parse_dt(end_val),
         title=str(title),
-        location=pick("location", "place", "site"),
-        notes=pick("notes", "note", "comment"),
-        updated_at=_parse_dt(str(updated_val or start_val)),
+        location=str(location) if location else None,
+        notes=str(notes) if notes else None,
+        updated_at=_parse_dt(updated_val) if updated_val else datetime.now(UTC),
     )
 
 
