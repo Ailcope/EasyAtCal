@@ -13,11 +13,21 @@ from easyatcal.session import SessionStore
 
 
 class SessionEawClient:
-    """Fetches shifts against the easy@work web app using persisted
-    browser cookies (from ``eaw-sync login``).
+    """Fetches shifts against the regional easy@work API using the JWT
+    the SPA obtains at login.
 
-    Endpoint is tenant-specific. Set ``shifts_endpoint`` on the config
-    to the path the web app hits (look in DevTools → Network).
+    URL shape observed in the wild (EU-West-3 tenant)::
+
+        GET https://eu-west-3.api.easyatwork.com
+            /customers/{customer_id}/employees/{employee_id}/shifts
+            ?from=YYYY-MM-DD HH:MM:SS
+            &order_by=from&direction=asc
+            &with[]=schedule.customer
+        Authorization: Bearer <JWT>
+        Origin: https://app.easyatwork.com
+
+    The JWT is extracted from the Playwright ``storage_state``'s
+    localStorage (populated by ``eaw-sync login``).
     """
 
     _MAX_RETRIES = 5
@@ -25,65 +35,71 @@ class SessionEawClient:
     def __init__(
         self,
         *,
-        app_url: str,
-        shifts_endpoint: str,
+        shifts_url: str,
         session_store: SessionStore,
+        origin: str = "https://app.easyatwork.com",
+        ui_version: str = "2.313.0",
         timeout: float = 30.0,
     ) -> None:
-        self.app_url = app_url.rstrip("/")
-        self.shifts_endpoint = shifts_endpoint
+        self.shifts_url = shifts_url
         self.session_store = session_store
+        self.origin = origin.rstrip("/")
+        self.ui_version = ui_version
         self._http = httpx.Client(timeout=timeout)
+        self._token: str | None = None
 
     def authenticate(self) -> None:
-        cookies = self.session_store.cookies()
-        if cookies is None:
+        token = self.session_store.access_token()
+        if token is None:
             raise AuthError(
-                "No session cookies found. Run `eaw-sync login` first."
+                "No access token in stored session. Run `eaw-sync login`."
             )
-        self._http.cookies = cookies
-        self._http.headers.update({
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-        })
+        self._token = token
+        self._http.headers.update(
+            {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json, text/plain, */*",
+                "Origin": self.origin,
+                "Referer": f"{self.origin}/",
+                "X-Ui-Version": self.ui_version,
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            }
+        )
 
     def fetch_shifts(
         self,
         from_date: date,
         to_date: date,
-        user_id: str | None = None,
+        user_id: str | None = None,  # kept for ShiftFetcher protocol
     ) -> list[Shift]:
-        if not self.shifts_endpoint:
-            raise ApiError(
-                "easyatwork.shifts_endpoint is blank. Capture a HAR from "
-                "the web app schedule view, find the request that returns "
-                "your shifts, and set that path (e.g. '/api/v1/shifts') "
-                "in the config."
-            )
         self.authenticate()
 
-        url: str | None = self._absolute(self.shifts_endpoint)
-        first_params: dict[str, str] = {
-            "from": from_date.isoformat(),
-            "to": to_date.isoformat(),
-        }
-        if user_id is not None:
-            first_params["user_id"] = user_id
-        params: dict[str, str] | None = first_params
+        # easy@work wants space-separated "YYYY-MM-DD HH:MM:SS". httpx
+        # URL-encodes the space as %20 automatically.
+        from_str = f"{from_date.isoformat()} 00:00:00"
+        to_str = f"{to_date.isoformat()} 23:59:59"
 
+        # httpx accepts sequences for repeated params: `with[]=schedule.customer`
+        params: list[tuple[str, str | int | float | bool | None]] = [
+            ("from", from_str),
+            ("to", to_str),
+            ("order_by", "from"),
+            ("direction", "asc"),
+            ("with[]", "schedule.customer"),
+        ]
+
+        url: str | None = self.shifts_url
+        first = True
         out: list[Shift] = []
         while url is not None:
-            r = self._retry_get(url, params)
+            r = self._retry_get(url, params if first else None)
+            first = False
             try:
                 payload = r.json()
                 for raw in _iter_rows(payload):
                     out.append(_parse_shift(raw))
-                next_url = _next_url(payload)
-                if next_url:
-                    url = next_url if next_url.startswith("http") else self._absolute(next_url)
-                    params = None
-                else:
-                    url = None
+                url = _next_url(payload)
             except (KeyError, TypeError, ValueError) as e:
                 raise ApiError(
                     f"Unexpected session API response shape. Parse error: {e}. "
@@ -92,17 +108,10 @@ class SessionEawClient:
                 ) from e
         return out
 
-    def _absolute(self, path: str) -> str:
-        if path.startswith("http"):
-            return path
-        if not path.startswith("/"):
-            path = "/" + path
-        return f"{self.app_url}{path}"
-
     def _retry_get(
         self,
         url: str,
-        params: dict[str, str] | None,
+        params: list[tuple[str, str | int | float | bool | None]] | None,
     ) -> httpx.Response:
         attempts = 0
         while True:
@@ -111,8 +120,8 @@ class SessionEawClient:
                 return r
             if r.status_code == 401:
                 raise AuthError(
-                    "Session cookies rejected (HTTP 401). "
-                    "Run `eaw-sync login` to refresh."
+                    "Access token rejected (HTTP 401). "
+                    "Token probably expired — run `eaw-sync login`."
                 )
             if r.status_code in (429, 500, 502, 503, 504):
                 attempts += 1
@@ -132,11 +141,14 @@ class SessionEawClient:
 
 
 def _iter_rows(payload: Any) -> list[dict[str, Any]]:
-    """Accept common paginated shapes until we pin the real one:
-    - {"data": [...], "next": ...}
-    - {"results": [...], "next": ...}
-    - {"items": [...]}
-    - [...]  (bare list)
+    """Accept common Laravel/DRF paginated shapes until we pin the real
+    one:
+
+    - ``{"data": [...], "next_page_url": ...}``   (Laravel paginator)
+    - ``{"data": [...], "meta": {...}}``          (Laravel resource)
+    - ``{"results": [...], "next": ...}``          (DRF)
+    - ``{"items": [...]}`` / ``{"shifts": [...]}``
+    - ``[...]``  (bare list)
     """
     if isinstance(payload, list):
         return payload
@@ -151,11 +163,14 @@ def _iter_rows(payload: Any) -> list[dict[str, Any]]:
 def _next_url(payload: Any) -> str | None:
     if not isinstance(payload, dict):
         return None
+    # Laravel paginator
+    v = payload.get("next_page_url")
+    if isinstance(v, str) and v:
+        return v
     for key in ("next", "next_url", "nextPage"):
         v = payload.get(key)
         if isinstance(v, str) and v:
             return v
-    # DRF-style nested
     links = payload.get("links")
     if isinstance(links, dict):
         v = links.get("next")
@@ -165,10 +180,18 @@ def _next_url(payload: Any) -> str | None:
 
 
 def _parse_shift(raw: dict[str, Any]) -> Shift:
-    """Best-effort mapping until we know the real field names.
+    """Best-effort mapping. Accepts a handful of common field spellings.
 
-    Tries a handful of common spellings. Override once HAR is captured.
+    Observed so far (will expand once a response body is available):
+    - id: ``id`` / ``uuid`` / ``shiftId``
+    - start: ``start`` / ``starts_at`` / ``from`` / ``start_date``
+    - end: ``end`` / ``ends_at`` / ``to`` / ``end_date``
+    - updated_at: ``updated_at`` / ``updatedAt`` / ``modified_at``
+    - title: ``title`` / ``name`` / ``label`` / nested
+             ``schedule.customer.name`` (via `with[]=schedule.customer`)
+    - location: ``location`` / ``place`` / ``site``
     """
+
     def pick(*keys: str) -> Any:
         for k in keys:
             if k in raw and raw[k] is not None:
@@ -176,8 +199,8 @@ def _parse_shift(raw: dict[str, Any]) -> Shift:
         return None
 
     id_val = pick("id", "uuid", "shiftId")
-    start_val = pick("start", "starts_at", "startDate", "startTime", "from")
-    end_val = pick("end", "ends_at", "endDate", "endTime", "to")
+    start_val = pick("start", "starts_at", "from", "start_date", "startTime")
+    end_val = pick("end", "ends_at", "to", "end_date", "endTime")
     updated_val = pick("updated_at", "updatedAt", "modified_at", "modifiedAt")
 
     if id_val is None or start_val is None or end_val is None:
@@ -185,14 +208,40 @@ def _parse_shift(raw: dict[str, Any]) -> Shift:
             f"shift row missing id/start/end; keys present: {list(raw)}"
         )
 
+    # Title: prefer schedule.customer.name if included (matches `with[]`)
+    title = pick("title", "name", "label")
+    if title is None:
+        schedule = raw.get("schedule")
+        if isinstance(schedule, dict):
+            customer = schedule.get("customer")
+            if isinstance(customer, dict):
+                title = customer.get("name")
+    if not title:
+        title = "Shift"
+
     return Shift(
         id=str(id_val),
-        start=datetime.fromisoformat(str(start_val)),
-        end=datetime.fromisoformat(str(end_val)),
-        title=pick("title", "name", "label") or "Shift",
+        start=_parse_dt(str(start_val)),
+        end=_parse_dt(str(end_val)),
+        title=str(title),
         location=pick("location", "place", "site"),
         notes=pick("notes", "note", "comment"),
-        updated_at=datetime.fromisoformat(
-            str(updated_val or start_val)
-        ),
+        updated_at=_parse_dt(str(updated_val or start_val)),
     )
+
+
+def _parse_dt(s: str) -> datetime:
+    """Accept both ISO-8601 (``2026-04-20T09:00:00+00:00``) and
+    Laravel-style (``2026-04-20 09:00:00``) timestamps. Naive values
+    are treated as UTC — the easy@work API sends tenant-local
+    timestamps without an offset.
+    """
+    from datetime import UTC
+
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        dt = datetime.fromisoformat(s.replace(" ", "T"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
