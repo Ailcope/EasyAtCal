@@ -292,6 +292,8 @@ def _prompt_ics_import(output_path: str) -> None:
     import sys
     import webbrowser
 
+    from easyatcal.state import load_state, save_state
+
     ics_path = os.path.expanduser(output_path)
     lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
     fr = lang.lower().startswith("fr")
@@ -299,9 +301,15 @@ def _prompt_ics_import(output_path: str) -> None:
     typer.secho("\n📅 " + ("Synchronisation réussie !" if fr else "Calendar Sync Successful!"), fg="green", bold=True)
     typer.echo(("Vos horaires ont été enregistrés dans : " if fr else "Your shifts were saved to: ") + ics_path)
 
+    sp = state_path()
+    state = load_state(sp)
+    
+    pref_local = state.preferences.get("open_local", False)
     prompt_local = ("Voulez-vous ouvrir votre calendrier maintenant pour importer ces horaires ?" if fr 
                     else "Would you like to open your local Calendar app now to import these shifts?")
-    if typer.confirm(prompt_local):
+    
+    ans_local = typer.confirm(prompt_local, default=pref_local)
+    if ans_local:
         typer.secho("Ouverture du calendrier..." if fr else "Opening calendar app...", fg="cyan")
         if sys.platform == "darwin":
             subprocess.run(["open", ics_path], check=False)
@@ -310,10 +318,18 @@ def _prompt_ics_import(output_path: str) -> None:
         else:
             subprocess.run(["xdg-open", ics_path], check=False)
 
+    pref_google = state.preferences.get("open_google", False)
     prompt_google = "Préférez-vous importer ceci dans Google Agenda ?" if fr else "Would you prefer to import this into Google Calendar?"
-    if typer.confirm(prompt_google):
+    
+    ans_google = typer.confirm(prompt_google, default=pref_google)
+    if ans_google:
         typer.secho("Ouverture de Google Agenda..." if fr else "Opening Google Calendar...", fg="cyan")
         webbrowser.open("https://calendar.google.com/calendar/r/settings/export")
+        
+    if ans_local != pref_local or ans_google != pref_google:
+        state.preferences["open_local"] = ans_local
+        state.preferences["open_google"] = ans_google
+        save_state(sp, state)
 
 
 @app.command("schedule")
