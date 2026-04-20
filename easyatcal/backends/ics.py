@@ -37,6 +37,7 @@ def _to_event(
     ev.add("summary", title)
     ev.add("dtstart", shift.start)
     ev.add("dtend", shift.end)
+    ev.add("dtstamp", shift.updated_at)
     ev.add("last-modified", shift.updated_at)
     if shift.location:
         ev.add("location", shift.location)
@@ -105,6 +106,7 @@ class IcsBackend:
         cal = Calendar()  # type: ignore[no-untyped-call]
         cal.add("prodid", "-//EasyAtCal//EN")
         cal.add("version", "2.0")
+        cal.add("calscale", "GREGORIAN")
         for shift in self._current.values():
             cal.add_component(_to_event(
                 shift,
