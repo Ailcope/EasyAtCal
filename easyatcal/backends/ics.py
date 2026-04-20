@@ -44,6 +44,8 @@ def _to_event(
     ev.add("last-modified", now)
     ev.add("sequence", int(now.timestamp()))
     ev.add("status", "CONFIRMED")
+    ev.add("transp", "OPAQUE")  # Standard: Show as busy
+    ev.add("X-MICROSOFT-CDO-BUSYSTATUS", "BUSY")  # Outlook specific
     if shift.location:
         ev.add("location", shift.location)
     if shift.notes:
@@ -115,6 +117,9 @@ class IcsBackend:
         cal.add("prodid", "-//EasyAtCal//EN")
         cal.add("version", "2.0")
         cal.add("calscale", "GREGORIAN")
+        cal.add("method", "PUBLISH")  # Crucial for Outlook
+        cal.add("x-wr-calname", "easy@work")  # Apple Calendar display name
+        cal.add("x-wr-caldesc", "Work shifts imported from easy@work")
         for shift in self._current.values():
             cal.add_component(_to_event(
                 shift,
