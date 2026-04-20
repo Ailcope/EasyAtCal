@@ -17,7 +17,9 @@ easyatwork:
   email: me@example.com
   login_url: https://app.easyatwork.com/
   app_url: https://app.easyatwork.com
-  shifts_endpoint: ""
+  api_url: https://eu-west-3.api.easyatwork.com
+  customer_id: 1
+  employee_id: 2
 backend: ics
 backends:
   ics:

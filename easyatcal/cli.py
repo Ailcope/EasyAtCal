@@ -104,11 +104,12 @@ def _build_api_client(cfg: Config) -> ShiftFetcher:
             base_url=cfg.easyatwork.base_url,
             token_cache=token_cache_path(),
         )
-    # auth_mode == "user" — session-cookie mode
+    # auth_mode == "user" — JWT Bearer mode (token from localStorage)
     return SessionEawClient(
-        app_url=cfg.easyatwork.app_url,
-        shifts_endpoint=cfg.easyatwork.shifts_endpoint,
+        shifts_url=cfg.easyatwork.shifts_url(),
         session_store=SessionStore(session_state_path()),
+        origin=cfg.easyatwork.app_url,
+        ui_version=cfg.easyatwork.ui_version,
     )
 
 

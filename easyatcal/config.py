@@ -30,9 +30,17 @@ class EasyAtWorkAuth(BaseModel):
     email: str | None = None
     login_url: str = "https://app.easyatwork.com/"
     app_url: str = "https://app.easyatwork.com"
-    # Which endpoint to hit for shifts once logged in.
-    # Blank → client raises on sync, prompting HAR inspection.
-    shifts_endpoint: str = ""
+    # Regional API host that the SPA talks to. Seen in the wild:
+    # "https://eu-west-3.api.easyatwork.com". Inspect DevTools → Network
+    # → any XHR for your tenant's region.
+    api_url: str = ""
+    # Per-user identifiers embedded in every shifts URL.
+    # Shape: /customers/{customer_id}/employees/{employee_id}/shifts
+    customer_id: int | None = None
+    employee_id: int | None = None
+    # Mimic the SPA's X-Ui-Version header (otherwise the API is fine
+    # without it, but setting it lowers the chance of anti-bot blocks).
+    ui_version: str = "2.313.0"
     # Playwright login form selectors (override per tenant if the form
     # layout differs).
     email_selector: str = "input[type='email'], input[name='email'], input[name='username']"
@@ -54,6 +62,18 @@ class EasyAtWorkAuth(BaseModel):
         if self.auth_mode == "user" and not self.email:
             raise ValueError("auth_mode=user requires email")
         return self
+
+    def shifts_url(self) -> str:
+        """Fully-qualified base URL of the shifts collection for this user."""
+        if not self.api_url or not self.customer_id or not self.employee_id:
+            raise ValueError(
+                "auth_mode=user requires api_url, customer_id, employee_id "
+                "to build the shifts URL. Capture a HAR from the web app."
+            )
+        return (
+            f"{self.api_url.rstrip('/')}/customers/{self.customer_id}"
+            f"/employees/{self.employee_id}/shifts"
+        )
 
 
 class SyncSettings(BaseModel):
@@ -103,7 +123,9 @@ _ENV_OVERRIDES: dict[str, tuple[str, str]] = {
     "EAW_EMAIL": ("easyatwork", "email"),
     "EAW_LOGIN_URL": ("easyatwork", "login_url"),
     "EAW_APP_URL": ("easyatwork", "app_url"),
-    "EAW_SHIFTS_ENDPOINT": ("easyatwork", "shifts_endpoint"),
+    "EAW_API_URL": ("easyatwork", "api_url"),
+    "EAW_CUSTOMER_ID": ("easyatwork", "customer_id"),
+    "EAW_EMPLOYEE_ID": ("easyatwork", "employee_id"),
 }
 
 

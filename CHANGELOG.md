@@ -7,17 +7,32 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
-- **Session-cookie auth via headless browser.** New `auth_mode: user`
+- **Bearer-JWT auth via headless browser.** New `auth_mode: user`
   (now the default) drives a headless Chromium through the easy@work
-  web login, persists cookies to `~/.cache/easyatcal/session.json`, and
-  replays them on every HTTP call. `eaw-sync login` / `eaw-sync logout`
+  web login, persists Playwright `storage_state` to
+  `~/.cache/easyatcal/session.json`, and extracts the Bearer JWT the
+  SPA writes to `localStorage`. Every request to the regional API
+  (`<region>.api.easyatwork.com`) replays the JWT as
+  `Authorization: Bearer …`. `eaw-sync login` / `eaw-sync logout`
   commands. Password never stored on disk — passes via `EAW_PASSWORD`
-  env or interactive prompt.
-- `SessionEawClient` with flexible payload shape detection
+  env or interactive prompt. JWT lifetime ~1 year.
+- New config fields `api_url`, `customer_id`, `employee_id`,
+  `ui_version`; shifts URL is built as
+  `{api_url}/customers/{customer_id}/employees/{employee_id}/shifts`.
+  `EAW_API_URL` / `EAW_CUSTOMER_ID` / `EAW_EMPLOYEE_ID` env overrides.
+- `SessionEawClient` sends Laravel-style space-separated datetime
+  (`YYYY-MM-DD HH:MM:SS`) plus `with[]=schedule.customer` eager-load,
+  mimics SPA headers (`Origin`, `Referer`, `X-Ui-Version`,
+  `Cache-Control`). Flexible payload shape detection
   (`data` / `results` / `items` / `shifts` / bare list) and heuristic
-  field mapping (`id`/`uuid`/`shiftId`, `start`/`starts_at`/`from`, …).
+  field mapping (`id`/`uuid`/`shiftId`, `start`/`starts_at`/`from`,
+  `schedule.customer.name` for title, …). Laravel paginator
+  `next_page_url` honored. `_parse_dt` accepts both ISO-8601 and
+  Laravel `YYYY-MM-DD HH:MM:SS` (assumed UTC).
   Returns `AuthError` on HTTP 401 with a "run login" hint.
-- `easyatcal.session.SessionStore` atomic 0600 cookie-jar persistence.
+- `easyatcal.session.SessionStore` atomic 0600 cookie + localStorage
+  persistence; `access_token()` scans localStorage for JWT-shaped
+  values.
 - `easyatcal.auth_user.do_login` Playwright driver with configurable
   selectors (`email_selector`, `password_selector`, `submit_selector`)
   and `headless` toggle.
@@ -27,8 +42,8 @@ All notable changes to this project are documented here. Format follows
 ### Changed
 - `doctor` and `auth test` now report session / OAuth status distinctly.
 - `ShiftFetcher` protocol gains `authenticate() -> object`.
-- `shifts_endpoint` is blank by default; sync raises a clear
-  "inspect HAR" error until set.
+- `api_url` / `customer_id` / `employee_id` required for user mode;
+  sync raises a clear error until all three set.
 
 ### Added
 - Structured log events in `run_sync` with `event_id` extra (`sync.fetch.ok`,

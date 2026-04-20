@@ -30,17 +30,21 @@ Python 3.11+. macOS for EventKit; any OS for ICS.
 
 easy@work has no public developer API. The default auth mode (`user`) logs
 a headless Chromium instance into `app.easyatwork.com` with your real
-credentials, captures the session cookies, and reuses them for all
-subsequent HTTP calls. Your password is never stored on disk — it lives
-only in the `EAW_PASSWORD` env var (or is prompted interactively).
+credentials, captures the session (cookies **and** the Bearer JWT the
+SPA writes to `localStorage`), and replays the JWT as
+`Authorization: Bearer …` on every request to the regional API host
+(e.g. `eu-west-3.api.easyatwork.com`). Your password is never stored on
+disk — it lives only in the `EAW_PASSWORD` env var (or is prompted
+interactively).
 
 ```bash
-EAW_PASSWORD='...' eaw-sync login       # persists cookies; do once, or when expired
-eaw-sync logout                          # wipe cookies
+EAW_PASSWORD='...' eaw-sync login       # persists storage_state; do once per year (JWT ~1y)
+eaw-sync logout                          # wipe session
 ```
 
-Cookies are written to `~/.cache/easyatcal/session.json` (0600) via
-Playwright's `storage_state`.
+`storage_state` is written to `~/.cache/easyatcal/session.json` (0600)
+via Playwright. The JWT is extracted from it at request time — no
+separate token file.
 
 An alternate `client` mode (OAuth client_credentials) is scaffolded in
 the code for forward-compat — if easy@work ever publishes an API, flip
@@ -50,12 +54,26 @@ the code for forward-compat — if easy@work ever publishes an API, flip
 
 ```bash
 eaw-sync config init                    # scaffold config
-$EDITOR ~/.config/easyatcal/config.yaml # set email, app_url, shifts_endpoint
-EAW_PASSWORD='...' eaw-sync login       # one-time headless login
+$EDITOR ~/.config/easyatcal/config.yaml # set email, api_url, customer_id, employee_id
+EAW_PASSWORD='...' eaw-sync login       # one-time headless login (JWT ~1y)
 eaw-sync doctor                         # check config + session + backend
 eaw-sync sync                           # one shot
 eaw-sync watch --interval-seconds 900   # loop every 15 min
 ```
+
+### Discovering your `customer_id` + `employee_id`
+
+Open DevTools → Network in `app.easyatwork.com`, filter XHR, load your
+schedule. The request URL contains both:
+
+```
+https://eu-west-3.api.easyatwork.com/customers/2571/employees/1464727/shifts?from=…
+                                              ^^^^            ^^^^^^^
+                                          customer_id     employee_id
+```
+
+`api_url` is the scheme + host (`https://eu-west-3.api.easyatwork.com`).
+The region segment varies per tenant.
 
 ## Configure
 
@@ -67,7 +85,10 @@ easyatwork:
   email: "me@example.com"
   login_url: "https://app.easyatwork.com/"
   app_url: "https://app.easyatwork.com"
-  shifts_endpoint: "/api/v1/shifts"   # capture from DevTools → Network
+  api_url: "https://eu-west-3.api.easyatwork.com"   # region host from DevTools
+  customer_id: 2571                                  # from the shifts URL
+  employee_id: 1464727                               # from the shifts URL
+  ui_version: "2.313.0"                              # mimic SPA header
 
 sync:
   lookback_days: 7
@@ -135,17 +156,16 @@ eaw-sync --install-completion        # bash / zsh / fish
 ## Known limitations
 
 - **No public API.** easy@work does not publish developer docs. The
-  default `user` auth mode scrapes the web app via Playwright and reuses
-  its session cookies, which works against the real tenant but depends
-  on the SPA's private endpoints.
-- **`shifts_endpoint` is tenant-specific.** Open
-  `app.easyatwork.com` in a browser, DevTools → Network, filter `XHR`,
-  open your schedule view, find the JSON request that returns your
-  shifts, copy its path to `easyatwork.shifts_endpoint`. Session-mode
+  default `user` auth mode scrapes the web app via Playwright, extracts
+  the Bearer JWT the SPA stores in `localStorage`, and replays it
+  against the regional API host. Depends on the SPA's private
+  endpoints — if they change shape, parsing may need a tweak.
+- **`api_url` / `customer_id` / `employee_id` are tenant-specific.**
+  See *Discovering your customer_id + employee_id* above. Payload
   parsing auto-detects common shapes (`{"data": [...]}`,
   `{"results": [...]}`, bare list, `id`/`uuid`/`shiftId`,
-  `start`/`starts_at`/`from`, etc) — unexpected shapes raise `ApiError`
-  with the observed top-level keys.
+  `start`/`starts_at`/`from`, `schedule.customer.name`, etc) —
+  unexpected shapes raise `ApiError` with the observed top-level keys.
 - **OAuth (`client` mode) is unverified.** Kept in-tree for forward-compat
   should easy@work publish a developer API, but there is no public
   reference client (`php-eaw-client` does not exist as a public repo).
