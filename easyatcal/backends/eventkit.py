@@ -24,7 +24,7 @@ def _import_eventkit() -> Any:  # pragma: no cover — platform guard
     if sys.platform != "darwin":
         raise EventKitUnavailableError("EventKit backend requires macOS")
     try:
-        import EventKit  # type: ignore[import-not-found]
+        import EventKit
     except ImportError as e:
         raise EventKitUnavailableError(
             "pyobjc-framework-EventKit not installed; "
@@ -61,7 +61,7 @@ def _event_store() -> Any:  # pragma: no cover — exercised via mocks in tests
 
 def _new_event(store: Any, calendar: Any, shift: Shift) -> Any:  # pragma: no cover
     EventKit = _import_eventkit()
-    import Foundation  # type: ignore[import-not-found]
+    import Foundation
 
     event = EventKit.EKEvent.eventWithEventStore_(store)
     event.setCalendar_(calendar)

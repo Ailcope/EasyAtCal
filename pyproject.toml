@@ -27,8 +27,8 @@ dev = [
     "pytest-cov>=5.0",
     "respx>=0.21",
     "freezegun>=1.4",
-    "ruff>=0.6",
     "mypy>=1.10",
+    "types-PyYAML",
 ]
 
 [project.scripts]
@@ -69,5 +69,5 @@ warn_return_any = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["playwright.*"]
+module = ["playwright.*", "EventKit", "Foundation"]
 ignore_missing_imports = true
