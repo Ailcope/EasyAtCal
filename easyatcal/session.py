@@ -121,9 +121,7 @@ class SessionStore:
                 break
         
         if found_token:
-            try:
+            with contextlib.suppress(Exception):
                 keyring.set_password("easyatcal", "jwt", found_token)
-            except Exception:
-                pass
             return found_token
         return None

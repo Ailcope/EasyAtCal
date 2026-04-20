@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -105,10 +106,8 @@ def do_login(
 
             # Wait a little longer just in case the API request hasn't fired yet
             if not discovered_meta:
-                try:
+                with contextlib.suppress(PWTimeout):
                     page.wait_for_timeout(3000)
-                except PWTimeout:
-                    pass
 
             state = context.storage_state()
             if discovered_meta:
@@ -119,9 +118,7 @@ def do_login(
             tmp = storage_path.with_suffix(storage_path.suffix + ".tmp")
             tmp.write_text(json.dumps(state))
             os.replace(tmp, storage_path)
-            try:
+            with contextlib.suppress(OSError):
                 os.chmod(storage_path, 0o600)
-            except OSError:
-                pass
         finally:
             browser.close()
