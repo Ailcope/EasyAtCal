@@ -1,8 +1,8 @@
 import sys
-import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 from typer.testing import CliRunner
+
 from easyatcal.cli import app
 
 runner = CliRunner()
