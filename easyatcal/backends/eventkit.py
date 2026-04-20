@@ -59,13 +59,26 @@ def _event_store() -> Any:  # pragma: no cover — exercised via mocks in tests
     return store
 
 
-def _new_event(store: Any, calendar: Any, shift: Shift) -> Any:  # pragma: no cover
+def _new_event(
+    store: Any,
+    calendar: Any,
+    shift: Shift,
+    event_title_format: str = "{title}",
+    alarm_minutes_before: int | None = None,
+) -> Any:  # pragma: no cover
     EventKit = _import_eventkit()
     import Foundation
 
     event = EventKit.EKEvent.eventWithEventStore_(store)
     event.setCalendar_(calendar)
-    event.setTitle_(shift.title)
+    
+    title = event_title_format.format(
+        title=shift.title,
+        location=shift.location or "",
+        notes=shift.notes or "",
+    ).strip()
+    event.setTitle_(title)
+    
     event.setStartDate_(
         Foundation.NSDate.dateWithTimeIntervalSince1970_(shift.start.timestamp())
     )
@@ -76,13 +89,26 @@ def _new_event(store: Any, calendar: Any, shift: Shift) -> Any:  # pragma: no co
         event.setLocation_(shift.location)
     if shift.notes:
         event.setNotes_(shift.notes)
+        
+    if alarm_minutes_before is not None:
+        alarm = EventKit.EKAlarm.alarmWithRelativeOffset_(-alarm_minutes_before * 60)
+        event.addAlarm_(alarm)
+        
     return event
 
 
 class EventKitBackend:
-    def __init__(self, calendar_name: str, calendar_source: str) -> None:
+    def __init__(
+        self,
+        calendar_name: str,
+        calendar_source: str,
+        event_title_format: str = "{title}",
+        alarm_minutes_before: int | None = None,
+    ) -> None:
         self.calendar_name = calendar_name
         self.calendar_source = calendar_source
+        self.event_title_format = event_title_format
+        self.alarm_minutes_before = alarm_minutes_before
         self._store = _event_store()
         self._calendar = self._resolve_calendar()
 
@@ -103,7 +129,13 @@ class EventKitBackend:
         result = ApplyResult()
         try:
             for shift in changes.adds:
-                event = _new_event(self._store, self._calendar, shift)
+                event = _new_event(
+                    self._store,
+                    self._calendar,
+                    shift,
+                    self.event_title_format,
+                    self.alarm_minutes_before,
+                )
                 ok, err = self._store.saveEvent_span_error_(event, 0, None)
                 if not ok:
                     raise BackendError(f"saveEvent failed for {shift.id}: {err}", result)
@@ -112,7 +144,13 @@ class EventKitBackend:
             for shift, event_uid in changes.updates:
                 existing = self._store.calendarItemWithIdentifier_(event_uid)
                 if existing is None:
-                    event = _new_event(self._store, self._calendar, shift)
+                    event = _new_event(
+                        self._store,
+                        self._calendar,
+                        shift,
+                        self.event_title_format,
+                        self.alarm_minutes_before,
+                    )
                     ok, err = self._store.saveEvent_span_error_(event, 0, None)
                     if not ok:
                         raise BackendError(
@@ -121,7 +159,14 @@ class EventKitBackend:
                         )
                     result.mapping[shift.id] = event.calendarItemExternalIdentifier()
                     continue
-                existing.setTitle_(shift.title)
+                
+                title = self.event_title_format.format(
+                    title=shift.title,
+                    location=shift.location or "",
+                    notes=shift.notes or "",
+                ).strip()
+                existing.setTitle_(title)
+                
                 import Foundation
                 existing.setStartDate_(
                     Foundation.NSDate.dateWithTimeIntervalSince1970_(
@@ -137,6 +182,14 @@ class EventKitBackend:
                     existing.setLocation_(shift.location)
                 if shift.notes is not None:
                     existing.setNotes_(shift.notes)
+                    
+                if self.alarm_minutes_before is not None:
+                    # Clear existing alarms and add the configured one
+                    existing.removeAllAlarms()
+                    EventKit = _import_eventkit()
+                    alarm = EventKit.EKAlarm.alarmWithRelativeOffset_(-self.alarm_minutes_before * 60)
+                    existing.addAlarm_(alarm)
+                    
                 ok, err = self._store.saveEvent_span_error_(existing, 0, None)
                 if not ok:
                     raise BackendError(

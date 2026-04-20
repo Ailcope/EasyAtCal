@@ -22,7 +22,10 @@ Works with **macOS EventKit** &bull; **Google Calendar** &bull; **Windows Outloo
 
 A CLI tool for syncing your [easy@work](https://www.easyatwork.com) shifts into Apple Calendar, Google Calendar, or standard ICS files. It runs locally, fetches your upcoming shifts, and pushes them to your preferred calendar app. It can also be run as a daemon to keep your calendar up to date in the background.
 
-- **Automated Login.** No public API required. It uses Playwright to securely log in via a headless browser and extract a session token.
+- **Automated Login & Discovery.** No public API required. It uses Playwright to securely log in via a headless browser, extracting both your session token and your unique account IDs (`customer_id`, `employee_id`) automatically.
+- **Secure Session.** Your JWT is securely cached in your OS's native credential store (Keychain on macOS, Credential Locker on Windows) via the `keyring` library.
+- **Background Sync.** Includes a built-in `schedule` command to easily install an auto-updating background daemon (macOS `launchd`, Linux `cron`, or Windows Task Scheduler).
+- **Customizable Events.** Configure your own event titles (e.g. `[Work] {title} at {location}`) and add automatic alarms/reminders for your shifts.
 - **Two Backends.** Native macOS **EventKit** integration (pushes directly to Apple Calendar) or portable **ICS** file generation (supports interactive import prompts for Google Calendar and Windows Outlook).
 - **Idempotent.** State-tracked logic means unchanged shifts are skipped, while schedule updates and cancellations propagate automatically.
 - **Bilingual CLI.** Automatically detects English or French system locales and adjusts interactive prompts.
@@ -53,20 +56,20 @@ Now, open the configuration file (located at `~/.config/easyatcal/config.yaml` o
 ```yaml
 easyatwork:
   email: "your.email@example.com"
-  api_url: "https://eu-west-3.api.easyatwork.com"   # Check your DevTools for your specific region
-  customer_id: 1234                                 # Found in DevTools URL
-  employee_id: 1234567                              # Found in DevTools URL
+  # Optional: api_url, customer_id, and employee_id are now automatically discovered!
 ```
 
-> **How to find your `customer_id` and `employee_id`:**
-> 1. Open your browser and log in to [app.easyatwork.com](https://app.easyatwork.com).
-> 2. Open Developer Tools (F12) -> Go to the **Network** tab.
-> 3. Click on your schedule. Look for a network request starting with `shifts?from=...`
-> 4. Look at the URL of that request: `https://eu-west-3.api.easyatwork.com/customers/<customer_id>/employees/<employee_id>/shifts`
+You can optionally configure event titles and alarms:
+
+```yaml
+sync:
+  event_title_format: "EasyAtWork: {title}"
+  alarm_minutes_before: 60  # Remind me 1 hour before my shift
+```
 
 ### 3. Log In
 
-Run the interactive login command. It prompts securely for your password, launches a headless Chromium browser, logs you in, and saves your session token securely.
+Run the interactive login command. It prompts securely for your password, launches a headless Chromium browser, logs you in, automatically discovers your account IDs (`customer_id`/`employee_id`), and saves your session token securely using your OS keyring.
 
 ```bash
 eaw-sync login
@@ -82,7 +85,19 @@ eaw-sync sync
 
 ## Background Sync
 
-To keep your calendar up to date continuously, run EasyAtCal in daemon mode:
+To keep your calendar up to date continuously, EasyAtCal can run in the background.
+
+Use the `schedule` command to set up an OS-level background task (macOS `launchd`, Linux `crontab`, or Windows Task Scheduler). The background job will run `eaw-sync sync` silently every few hours.
+
+```bash
+# Display the necessary configuration to set up background sync
+eaw-sync schedule --interval-hours 6
+
+# Alternatively, have it install automatically on macOS/Linux
+eaw-sync schedule --install --interval-hours 6
+```
+
+Alternatively, run EasyAtCal in daemon loop mode manually:
 
 ```bash
 eaw-sync watch --interval-seconds 900   # Syncs every 15 minutes
@@ -117,6 +132,7 @@ Writes directly to a dedicated calendar in the macOS Calendar.app via native API
 | `eaw-sync sync` | Run a single sync pass. |
 | `eaw-sync sync --dry-run` | Diff remote shifts against local state without writing. |
 | `eaw-sync watch` | Run the sync in an infinite loop. |
+| `eaw-sync schedule` | Generate or install OS-level background sync (`launchd`, `cron`). |
 | `eaw-sync --install-completion` | Install shell autocomplete (bash/zsh/fish). |
 
 ### Exit codes (`sync`)
@@ -129,7 +145,7 @@ Writes directly to a dedicated calendar in the macOS Calendar.app via native API
 
 ## Security
 
-Your easy@work password is **never stored on disk**. The configuration file only stores your email. When you run `eaw-sync login`, the password is used once to drive the browser, and only the resulting JSON Web Token (JWT) is saved locally in `~/.cache/easyatcal/session.json` (with strict `0600` permissions).
+Your easy@work password is **never stored on disk**. The configuration file only stores your email. When you run `eaw-sync login`, the password is used once to drive the browser, and the resulting JSON Web Token (JWT) is extracted and saved securely in your OS's native credential store using `keyring` (macOS Keychain, Windows Credential Locker, Linux Secret Service). Non-sensitive session data (like your `customer_id` and UI state) is saved in `~/.local/state/easyatcal` with strict `0600` permissions.
 
 ## License
 

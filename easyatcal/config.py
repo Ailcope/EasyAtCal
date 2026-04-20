@@ -63,16 +63,21 @@ class EasyAtWorkAuth(BaseModel):
             raise ValueError("auth_mode=user requires email")
         return self
 
-    def shifts_url(self) -> str:
+    def shifts_url(self, session_meta: dict | None = None) -> str:
         """Fully-qualified base URL of the shifts collection for this user."""
-        if not self.api_url or not self.customer_id or not self.employee_id:
+        api_url = self.api_url or (session_meta or {}).get("api_url")
+        customer_id = self.customer_id or (session_meta or {}).get("customer_id")
+        employee_id = self.employee_id or (session_meta or {}).get("employee_id")
+
+        if not api_url or not customer_id or not employee_id:
             raise ValueError(
                 "auth_mode=user requires api_url, customer_id, employee_id "
-                "to build the shifts URL. Capture a HAR from the web app."
+                "to build the shifts URL. Capture a HAR from the web app "
+                "or re-run `eaw-sync login` to extract them automatically."
             )
         return (
-            f"{self.api_url.rstrip('/')}/customers/{self.customer_id}"
-            f"/employees/{self.employee_id}/shifts"
+            f"{api_url.rstrip('/')}/customers/{customer_id}"
+            f"/employees/{employee_id}/shifts"
         )
 
 
@@ -80,6 +85,8 @@ class SyncSettings(BaseModel):
     lookback_days: int = Field(ge=0, default=7)
     lookahead_days: int = Field(ge=1, default=90)
     user_id: str | None = None
+    event_title_format: str = "{title}"
+    alarm_minutes_before: int | None = None
 
 
 class EventKitSettings(BaseModel):
