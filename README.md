@@ -1,21 +1,31 @@
+<div align="center">
+
 # EasyAtCal
 
 [![CI](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml/badge.svg)](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/Ailcope/EasyAtCal)
 [![PyPI](https://img.shields.io/pypi/v/easyatcal.svg)](https://pypi.org/project/easyatcal/)
-[![Python](https://img.shields.io/pypi/pyversions/easyatcal.svg)](https://pypi.org/project/easyatcal/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-A CLI tool for syncing your [easy@work](https://www.easyatwork.com) shifts into Apple Calendar, Google Calendar, or standard ICS files.
+**One-way sync of easy@work shifts into Apple Calendar, Google Calendar, or standard ICS files.**
 
-It runs locally, fetches your upcoming shifts, and pushes them to your preferred calendar app. It can also be run as a daemon to keep your calendar up to date in the background.
+Works with **macOS EventKit** &bull; **Google Calendar** &bull; **Windows Outlook**
 
-*   **Automated Login**: No public API required. It uses Playwright to securely log in via a headless browser and extract a session token.
-*   **Two Backends**: Native macOS **EventKit** integration (pushes directly to Apple Calendar) or portable **ICS** file generation (supports interactive import prompts for Google Calendar and Windows Outlook).
-*   **Idempotent**: State-tracked logic means unchanged shifts are skipped, while schedule updates and cancellations propagate automatically.
-*   **Bilingual CLI**: Automatically detects English or French system locales and adjusts interactive prompts.
+[Quickstart](#quickstart) &bull; [Configuration](#configuration) &bull; [Backends](#backends) &bull; [Commands](#cli-commands)
+
+</div>
 
 ---
+
+## Overview
+
+A CLI tool for syncing your [easy@work](https://www.easyatwork.com) shifts into Apple Calendar, Google Calendar, or standard ICS files. It runs locally, fetches your upcoming shifts, and pushes them to your preferred calendar app. It can also be run as a daemon to keep your calendar up to date in the background.
+
+- **Automated Login.** No public API required. It uses Playwright to securely log in via a headless browser and extract a session token.
+- **Two Backends.** Native macOS **EventKit** integration (pushes directly to Apple Calendar) or portable **ICS** file generation (supports interactive import prompts for Google Calendar and Windows Outlook).
+- **Idempotent.** State-tracked logic means unchanged shifts are skipped, while schedule updates and cancellations propagate automatically.
+- **Bilingual CLI.** Automatically detects English or French system locales and adjusts interactive prompts.
 
 ## Quickstart
 
@@ -27,6 +37,7 @@ Install the core application and the Playwright browser dependencies (required f
 pip install 'easyatcal[playwright]'
 playwright install chromium
 ```
+
 *(If you are on macOS and want native Apple Calendar integration, use `pip install 'easyatcal[eventkit,playwright]'`)*
 
 ### 2. Configure
