@@ -5,11 +5,14 @@ easyatwork:
 
   # ---------- user mode ----------
   email: "me@example.com"         # or set EAW_EMAIL
+  
   # Password is NEVER stored on disk. Provide it via env var for `eaw-sync login`:
   #   EAW_PASSWORD=... eaw-sync login
   # or enter it interactively when prompted.
+  
   login_url: "https://app.easyatwork.com/"
   app_url: "https://app.easyatwork.com"
+  
   # Regional API host the SPA talks to. Open DevTools → Network → any XHR
   # while you view your schedule. The request URL looks like:
   #   https://<region>.api.easyatwork.com/customers/<cid>/employees/<eid>/shifts
@@ -17,30 +20,24 @@ easyatwork:
   api_url: "https://eu-west-3.api.easyatwork.com"
   customer_id: 0                  # e.g. 2571 — from the URL above
   employee_id: 0                  # e.g. 1464727 — from the URL above
+  
   # Mimic the SPA version header. Bump if the API starts rejecting.
   ui_version: "2.313.0"
-  # Selectors for the login form. Override if the defaults don't match.
-  # email_selector: "input[type='email']"
-  # password_selector: "input[type='password']"
-  # submit_selector: "button[type='submit']"
-  headless: true                  # set false to watch the browser
-
-  # ---------- client mode (OAuth, hypothetical) ----------
-  # client_id: "REPLACE_ME"
-  # client_secret: "REPLACE_ME"   # or EAW_CLIENT_SECRET env var
-  # base_url: "https://api.easyatwork.com"
+  
+  # Browser is headless by default. Set false to watch the automated login visually.
+  headless: true
 
 sync:
   lookback_days: 7
   lookahead_days: 90
   user_id: null                   # null = self
 
-backend: eventkit                 # "eventkit" or "ics"
+backend: ics                      # "eventkit" (macOS) or "ics" (All platforms)
 
 backends:
   eventkit:
-    calendar_name: "Work Shifts"
-    calendar_source: "iCloud"
+    calendar_name: "EasyAtWork"
+    calendar_source: "iCloud"     # "iCloud" or "On My Mac"
   ics:
     output_path: "~/Documents/easyatwork-shifts.ics"
 

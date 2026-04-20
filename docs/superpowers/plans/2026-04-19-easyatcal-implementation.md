@@ -1,6 +1,6 @@
 # EasyAtCal Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (` - [x]`) syntax for tracking.
 
 **Goal:** Build a Python CLI (`eaw-sync`) that fetches shifts from the easy@work REST API and writes them to Apple Calendar (via EventKit on macOS) or a portable `.ics` file, with one-way sync and a daemon mode.
 
@@ -23,7 +23,7 @@ Spec: `docs/superpowers/specs/2026-04-19-easyatcal-design.md`
 - Create: `config.example.yaml`
 - Create: `README.md` (replace existing empty file)
 
-- [ ] **Step 1: Create `pyproject.toml`**
+ - [x] **Step 1: Create `pyproject.toml`**
 
 ```toml
 [build-system]
@@ -67,7 +67,7 @@ testpaths = ["tests"]
 addopts = "-v --strict-markers"
 ```
 
-- [ ] **Step 2: Create `.gitignore`**
+ - [x] **Step 2: Create `.gitignore`**
 
 ```gitignore
 # Secrets & user data
@@ -94,7 +94,7 @@ build/
 .DS_Store
 ```
 
-- [ ] **Step 3: Create package and test skeletons**
+ - [x] **Step 3: Create package and test skeletons**
 
 `easyatcal/__init__.py`:
 ```python
@@ -110,7 +110,7 @@ __version__ = "0.1.0"
 import pytest
 ```
 
-- [ ] **Step 4: Create `config.example.yaml`**
+ - [x] **Step 4: Create `config.example.yaml`**
 
 ```yaml
 easyatwork:
@@ -137,7 +137,7 @@ logging:
   level: INFO
 ```
 
-- [ ] **Step 5: Create `README.md`**
+ - [x] **Step 5: Create `README.md`**
 
 ```markdown
 # EasyAtCal
@@ -168,12 +168,12 @@ eaw-sync watch --interval 15m           # daemon mode
 See `docs/superpowers/specs/2026-04-19-easyatcal-design.md` for full design.
 ```
 
-- [ ] **Step 6: Install in editable mode and verify pytest runs**
+ - [x] **Step 6: Install in editable mode and verify pytest runs**
 
 Run: `pip install -e '.[dev]' && pytest`
 Expected: `collected 0 items` — no failure.
 
-- [ ] **Step 7: Commit**
+ - [x] **Step 7: Commit**
 
 ```bash
 git add pyproject.toml .gitignore easyatcal/ tests/ config.example.yaml README.md
@@ -188,7 +188,7 @@ git commit -m "scaffold: project layout, pyproject, gitignore, readme"
 - Create: `easyatcal/models.py`
 - Create: `tests/test_models.py`
 
-- [ ] **Step 1: Write failing test**
+ - [x] **Step 1: Write failing test**
 
 `tests/test_models.py`:
 ```python
@@ -226,12 +226,12 @@ def test_shift_requires_tz_aware_datetimes():
         )
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+ - [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_models.py -v`
 Expected: FAIL — `ModuleNotFoundError: easyatcal.models`.
 
-- [ ] **Step 3: Implement `easyatcal/models.py`**
+ - [x] **Step 3: Implement `easyatcal/models.py`**
 
 ```python
 from dataclasses import dataclass
@@ -259,12 +259,12 @@ class Shift:
         return (self.end - self.start).total_seconds() / 3600.0
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+ - [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_models.py -v`
 Expected: 2 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/models.py tests/test_models.py
@@ -280,7 +280,7 @@ git commit -m "feat(models): Shift dataclass with tz-aware validation"
 - Create: `tests/test_config.py`
 - Create: `tests/fixtures/config_valid.yaml`
 
-- [ ] **Step 1: Create test fixture**
+ - [x] **Step 1: Create test fixture**
 
 `tests/fixtures/config_valid.yaml`:
 ```yaml
@@ -304,7 +304,7 @@ logging:
   level: INFO
 ```
 
-- [ ] **Step 2: Write failing tests**
+ - [x] **Step 2: Write failing tests**
 
 `tests/test_config.py`:
 ```python
@@ -344,12 +344,12 @@ def test_missing_file_raises(tmp_path):
         load_config(tmp_path / "missing.yaml")
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+ - [x] **Step 3: Run tests to verify they fail**
 
 Run: `pytest tests/test_config.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Implement `easyatcal/config.py`**
+ - [x] **Step 4: Implement `easyatcal/config.py`**
 
 ```python
 from __future__ import annotations
@@ -425,12 +425,12 @@ def load_config(path: Path) -> Config:
     return Config.model_validate(raw)
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+ - [x] **Step 5: Run tests to verify they pass**
 
 Run: `pytest tests/test_config.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 6: Commit**
+ - [x] **Step 6: Commit**
 
 ```bash
 git add easyatcal/config.py tests/test_config.py tests/fixtures/config_valid.yaml
@@ -445,7 +445,7 @@ git commit -m "feat(config): pydantic config loader with env overrides"
 - Create: `easyatcal/state.py`
 - Create: `tests/test_state.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/test_state.py`:
 ```python
@@ -490,12 +490,12 @@ def test_save_is_atomic(tmp_path: Path):
     assert json.loads(path.read_text())["shift_to_event"] == {"a": "b"}
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_state.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `easyatcal/state.py`**
+ - [x] **Step 3: Implement `easyatcal/state.py`**
 
 ```python
 from __future__ import annotations
@@ -534,12 +534,12 @@ def save_state(path: Path, state: State) -> None:
     os.replace(tmp, path)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_state.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/state.py tests/test_state.py
@@ -554,7 +554,7 @@ git commit -m "feat(state): atomic json state with corrupt-file recovery"
 - Create: `easyatcal/api.py`
 - Create: `tests/test_api_auth.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/test_api_auth.py`:
 ```python
@@ -628,12 +628,12 @@ def test_auth_failure_raises(tmp_path: Path):
         client.authenticate()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_api_auth.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement auth section of `easyatcal/api.py`**
+ - [x] **Step 3: Implement auth section of `easyatcal/api.py`**
 
 ```python
 from __future__ import annotations
@@ -726,12 +726,12 @@ class EawClient:
             pass
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_api_auth.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/api.py tests/test_api_auth.py
@@ -746,7 +746,7 @@ git commit -m "feat(api): OAuth client_credentials auth with cached token"
 - Modify: `easyatcal/api.py` (add methods)
 - Create: `tests/test_api_fetch.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/test_api_fetch.py`:
 ```python
@@ -893,12 +893,12 @@ def test_fetch_shifts_gives_up_after_5_retries(tmp_path: Path, monkeypatch):
         )
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_api_fetch.py -v`
 Expected: FAIL — `fetch_shifts` not defined.
 
-- [ ] **Step 3: Extend `easyatcal/api.py`**
+ - [x] **Step 3: Extend `easyatcal/api.py`**
 
 Append these methods to the `EawClient` class (after `_write_cache`):
 
@@ -958,12 +958,12 @@ Append these methods to the `EawClient` class (after `_write_cache`):
         return out
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_api_fetch.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/api.py tests/test_api_fetch.py
@@ -980,12 +980,12 @@ git commit -m "feat(api): fetch_shifts with pagination and backoff"
 - Create: `tests/backends/__init__.py`
 - Create: `tests/backends/test_base.py`
 
-- [ ] **Step 1: Create empty `__init__.py` files**
+ - [x] **Step 1: Create empty `__init__.py` files**
 
 `easyatcal/backends/__init__.py`: empty.
 `tests/backends/__init__.py`: empty.
 
-- [ ] **Step 2: Write failing test**
+ - [x] **Step 2: Write failing test**
 
 `tests/backends/test_base.py`:
 ```python
@@ -1008,12 +1008,12 @@ def test_backend_is_protocol_with_apply():
     assert d.apply(Changes([], [], [])) == {}
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+ - [x] **Step 3: Run test to verify it fails**
 
 Run: `pytest tests/backends/test_base.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Implement `easyatcal/backends/base.py`**
+ - [x] **Step 4: Implement `easyatcal/backends/base.py`**
 
 ```python
 from __future__ import annotations
@@ -1042,12 +1042,12 @@ class CalendarBackend(Protocol):
         ...
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+ - [x] **Step 5: Run test to verify it passes**
 
 Run: `pytest tests/backends/test_base.py -v`
 Expected: 2 passed.
 
-- [ ] **Step 6: Commit**
+ - [x] **Step 6: Commit**
 
 ```bash
 git add easyatcal/backends/ tests/backends/__init__.py tests/backends/test_base.py
@@ -1062,7 +1062,7 @@ git commit -m "feat(backends): Changes dataclass and CalendarBackend protocol"
 - Create: `easyatcal/sync.py`
 - Create: `tests/test_sync.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/test_sync.py`:
 ```python
@@ -1130,12 +1130,12 @@ def test_shift_missing_from_remote_is_delete():
     assert changes.deletes == ["evt-b"]
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_sync.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `easyatcal/sync.py`**
+ - [x] **Step 3: Implement `easyatcal/sync.py`**
 
 ```python
 from __future__ import annotations
@@ -1175,12 +1175,12 @@ def compute_changes(
     return Changes(adds=adds, updates=updates, deletes=deletes)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_sync.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/sync.py tests/test_sync.py
@@ -1195,7 +1195,7 @@ git commit -m "feat(sync): diff engine for adds/updates/deletes"
 - Modify: `easyatcal/state.py`
 - Modify: `tests/test_state.py`
 
-- [ ] **Step 1: Add test for new field**
+ - [x] **Step 1: Add test for new field**
 
 Append to `tests/test_state.py`:
 ```python
@@ -1213,12 +1213,12 @@ def test_state_roundtrip_with_updated_at(tmp_path):
     assert loaded.shift_updated_at == {"s1": "2026-04-18T10:00:00+00:00"}
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+ - [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_state.py::test_state_roundtrip_with_updated_at -v`
 Expected: FAIL — field not defined.
 
-- [ ] **Step 3: Add field to `easyatcal/state.py`**
+ - [x] **Step 3: Add field to `easyatcal/state.py`**
 
 Modify the `State` dataclass:
 ```python
@@ -1238,12 +1238,12 @@ Update `load_state` body so the constructor call includes the new field:
         )
 ```
 
-- [ ] **Step 4: Run all state tests to verify they pass**
+ - [x] **Step 4: Run all state tests to verify they pass**
 
 Run: `pytest tests/test_state.py -v`
 Expected: 5 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/state.py tests/test_state.py
@@ -1258,7 +1258,7 @@ git commit -m "feat(state): track shift_updated_at per shift"
 - Create: `easyatcal/backends/ics.py`
 - Create: `tests/backends/test_ics.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/backends/test_ics.py`:
 ```python
@@ -1334,12 +1334,12 @@ def test_updates_replace_event(tmp_path: Path):
     assert "SUMMARY:Shift s1" not in body
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/backends/test_ics.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `easyatcal/backends/ics.py`**
+ - [x] **Step 3: Implement `easyatcal/backends/ics.py`**
 
 ```python
 from __future__ import annotations
@@ -1420,12 +1420,12 @@ class IcsBackend:
         tmp.replace(self.output_path)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/backends/test_ics.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/backends/ics.py tests/backends/test_ics.py
@@ -1440,7 +1440,7 @@ git commit -m "feat(backends): ICS file backend with add/update/delete"
 - Create: `easyatcal/backends/eventkit.py`
 - Create: `tests/backends/test_eventkit.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/backends/test_eventkit.py`:
 ```python
@@ -1519,12 +1519,12 @@ def test_apply_deletes_removes_events(mock_store_factory):
     store.removeEvent_span_error_.assert_called()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail (macOS only)**
+ - [x] **Step 2: Run tests to verify they fail (macOS only)**
 
 Run: `pytest tests/backends/test_eventkit.py -v`
 Expected on macOS: FAIL — module not found. On Linux: skipped.
 
-- [ ] **Step 3: Implement `easyatcal/backends/eventkit.py`**
+ - [x] **Step 3: Implement `easyatcal/backends/eventkit.py`**
 
 ```python
 """macOS EventKit calendar backend.
@@ -1676,12 +1676,12 @@ class EventKitBackend:
         return mapping
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/backends/test_eventkit.py -v`
 Expected on macOS: 2 passed. On Linux: skipped.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/backends/eventkit.py tests/backends/test_eventkit.py
@@ -1696,7 +1696,7 @@ git commit -m "feat(backends): macOS EventKit backend via pyobjc"
 - Create: `easyatcal/orchestrator.py`
 - Create: `tests/test_orchestrator.py`
 
-- [ ] **Step 1: Write failing test**
+ - [x] **Step 1: Write failing test**
 
 `tests/test_orchestrator.py`:
 ```python
@@ -1752,12 +1752,12 @@ def test_run_sync_applies_changes_and_persists_state(tmp_path: Path):
     assert saved.last_sync == "2026-04-19T12:00:00+00:00"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+ - [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_orchestrator.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `easyatcal/orchestrator.py`**
+ - [x] **Step 3: Implement `easyatcal/orchestrator.py`**
 
 ```python
 from __future__ import annotations
@@ -1821,12 +1821,12 @@ def run_sync(
     )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+ - [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_orchestrator.py -v`
 Expected: 1 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/orchestrator.py tests/test_orchestrator.py
@@ -1842,7 +1842,7 @@ git commit -m "feat(orchestrator): tie api + sync + backend + state together"
 - Create: `easyatcal/paths.py`
 - Create: `tests/test_cli_config.py`
 
-- [ ] **Step 1: Create helper for platform paths**
+ - [x] **Step 1: Create helper for platform paths**
 
 `easyatcal/paths.py`:
 ```python
@@ -1871,7 +1871,7 @@ def log_path() -> Path:
     return Path(user_data_dir(APP)) / "logs" / "eaw-sync.log"
 ```
 
-- [ ] **Step 2: Write failing tests**
+ - [x] **Step 2: Write failing tests**
 
 `tests/test_cli_config.py`:
 ```python
@@ -1923,12 +1923,12 @@ def test_config_show_redacts_secret(tmp_path: Path):
     assert "***" in result.stdout
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+ - [x] **Step 3: Run tests to verify they fail**
 
 Run: `pytest tests/test_cli_config.py -v`
 Expected: FAIL — cli module missing.
 
-- [ ] **Step 4: Implement `easyatcal/cli.py`**
+ - [x] **Step 4: Implement `easyatcal/cli.py`**
 
 ```python
 from __future__ import annotations
@@ -1970,12 +1970,12 @@ def config_show() -> None:
     typer.echo(yaml.safe_dump(dumped, sort_keys=False))
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+ - [x] **Step 5: Run tests to verify they pass**
 
 Run: `pytest tests/test_cli_config.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 6: Commit**
+ - [x] **Step 6: Commit**
 
 ```bash
 git add easyatcal/cli.py easyatcal/paths.py tests/test_cli_config.py
@@ -1990,7 +1990,7 @@ git commit -m "feat(cli): config init and config show with secret redaction"
 - Modify: `easyatcal/cli.py`
 - Create: `tests/test_cli_sync.py`
 
-- [ ] **Step 1: Write failing tests**
+ - [x] **Step 1: Write failing tests**
 
 `tests/test_cli_sync.py`:
 ```python
@@ -2034,12 +2034,12 @@ def test_watch_loops_until_interrupt(mock_cfg, mock_api, mock_back, mock_run, mo
     assert result.exit_code == 0
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+ - [x] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_cli_sync.py -v`
 Expected: FAIL — `sync` / `watch` commands not registered.
 
-- [ ] **Step 3: Extend `easyatcal/cli.py`**
+ - [x] **Step 3: Extend `easyatcal/cli.py`**
 
 Add to `easyatcal/cli.py` (after existing imports):
 
@@ -2121,12 +2121,12 @@ def watch_cmd(
         typer.echo("\nStopped.")
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+ - [x] **Step 4: Run tests to verify they pass**
 
 Run: `pytest tests/test_cli_sync.py -v`
 Expected: 2 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/cli.py tests/test_cli_sync.py
@@ -2141,7 +2141,7 @@ git commit -m "feat(cli): sync one-shot and watch daemon commands"
 - Modify: `easyatcal/cli.py`
 - Create: `tests/test_cli_auth.py`
 
-- [ ] **Step 1: Write failing test**
+ - [x] **Step 1: Write failing test**
 
 `tests/test_cli_auth.py`:
 ```python
@@ -2181,12 +2181,12 @@ def test_auth_test_failure(mock_cfg, mock_build):
     assert "bad creds" in result.stdout
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+ - [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_cli_auth.py -v`
 Expected: FAIL — `auth test` not registered.
 
-- [ ] **Step 3: Add `auth test` to `easyatcal/cli.py`**
+ - [x] **Step 3: Add `auth test` to `easyatcal/cli.py`**
 
 Append:
 ```python
@@ -2209,12 +2209,12 @@ def auth_test() -> None:
     typer.echo("OK — credentials work.")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+ - [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_cli_auth.py -v`
 Expected: 2 passed.
 
-- [ ] **Step 5: Commit**
+ - [x] **Step 5: Commit**
 
 ```bash
 git add easyatcal/cli.py tests/test_cli_auth.py
@@ -2230,7 +2230,7 @@ git commit -m "feat(cli): auth test subcommand"
 - Modify: `easyatcal/cli.py` (call setup at entry)
 - Create: `tests/test_logging_setup.py`
 
-- [ ] **Step 1: Write failing test**
+ - [x] **Step 1: Write failing test**
 
 `tests/test_logging_setup.py`:
 ```python
@@ -2254,12 +2254,12 @@ def test_configure_logging_writes_to_file(tmp_path: Path):
     assert "hello world" in log_file.read_text()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+ - [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_logging_setup.py -v`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement `easyatcal/logging_setup.py`**
+ - [x] **Step 3: Implement `easyatcal/logging_setup.py`**
 
 ```python
 from __future__ import annotations
@@ -2290,12 +2290,12 @@ def configure_logging(level: str, log_file: Path) -> None:
     root.addHandler(console_h)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+ - [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_logging_setup.py -v`
 Expected: 1 passed.
 
-- [ ] **Step 5: Wire into CLI**
+ - [x] **Step 5: Wire into CLI**
 
 At the top of `easyatcal/cli.py`, add:
 
@@ -2310,12 +2310,12 @@ Inside each of `sync_cmd`, `watch_cmd`, `auth_test`, insert as the very first li
 configure_logging(level=cfg.logging.level, log_file=log_path())
 ```
 
-- [ ] **Step 6: Re-run full test suite**
+ - [x] **Step 6: Re-run full test suite**
 
 Run: `pytest`
 Expected: all tests pass (EventKit tests skipped on non-macOS).
 
-- [ ] **Step 7: Commit**
+ - [x] **Step 7: Commit**
 
 ```bash
 git add easyatcal/logging_setup.py easyatcal/cli.py tests/test_logging_setup.py
@@ -2329,7 +2329,7 @@ git commit -m "feat(logging): rotating file + console handlers"
 **Files:**
 - Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Create CI workflow**
+ - [x] **Step 1: Create CI workflow**
 
 ```yaml
 name: CI
@@ -2364,12 +2364,12 @@ jobs:
         run: pytest --cov=easyatcal
 ```
 
-- [ ] **Step 2: Run pytest locally one more time before commit**
+ - [x] **Step 2: Run pytest locally one more time before commit**
 
 Run: `pytest --cov=easyatcal`
 Expected: all pass, coverage reported.
 
-- [ ] **Step 3: Commit**
+ - [x] **Step 3: Commit**
 
 ```bash
 git add .github/workflows/ci.yml
@@ -2383,7 +2383,7 @@ git commit -m "ci: test matrix on Linux + macOS, Python 3.11 and 3.12"
 **Files:**
 - Create: `tests/test_e2e_ics.py`
 
-- [ ] **Step 1: Write the e2e test**
+ - [x] **Step 1: Write the e2e test**
 
 `tests/test_e2e_ics.py`:
 ```python
@@ -2445,12 +2445,12 @@ def test_end_to_end_ics(tmp_path: Path):
     assert (tmp_path / "state.json").exists()
 ```
 
-- [ ] **Step 2: Run the e2e test**
+ - [x] **Step 2: Run the e2e test**
 
 Run: `pytest tests/test_e2e_ics.py -v`
 Expected: 1 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/test_e2e_ics.py
@@ -2461,17 +2461,34 @@ git commit -m "test(e2e): ICS backend end-to-end with mocked API"
 
 ## Task 19: Push to origin
 
-- [ ] **Step 1: Push all commits**
+- [x] **Step 1: Push all commits**
 
 Run: `git push origin main`
 Expected: branch updated.
 
-- [ ] **Step 2: Tag v0.1.0**
+- [x] **Step 2: Tag v0.1.0**
 
 ```bash
 git tag -a v0.1.0 -m "Initial release: easy@work → Apple Calendar sync"
 git push origin v0.1.0
 ```
+
+---
+
+## Phase 2: User-Mode Auth Pivot (Completed)
+
+After the initial implementation, we discovered that OAuth `client_credentials` was insufficient or inaccessible for regular users. We pivoted to a "user mode" utilizing Playwright for headless UI automation to extract a JWT Bearer token from `localStorage`.
+
+### New Modules Introduced:
+- `easyatcal/session.py`: `SessionStore` for persisting the JWT state and Playwright `storage_state.json`.
+- `easyatcal/auth_user.py`: Implements `do_login()` which orchestrates the headless Playwright browser, navigates to the login page, fills credentials, waits for a post-login selector, and saves the storage state.
+- `easyatcal/api_session.py`: `SessionEawClient` which loads the saved state, extracts the JWT from the `easyatwork.auth` local storage payload, and injects it as a Bearer token in subsequent API requests.
+- `easyatcal/cli.py` additions: `eaw-sync login` (interactive or headless login) and `eaw-sync logout`.
+
+### Architectural Changes:
+- **JWT Bearer Refactor:** All API calls now replay the JWT Bearer token against the region-specific API (e.g. `eu-west-3.api.easyatwork.com/customers/{cid}/employees/{eid}/shifts`).
+- **Configuration Updates:** The user must explicitly set `api_url`, `customer_id`, `employee_id`, and Playwright configuration options (`login_url`, `login_selectors`, `headless`, etc.) in `config.yaml`.
+- **Commit Refs:** `48cb8b0` (JWT pivot) and `323f338` (intermediate).
 
 ---
 

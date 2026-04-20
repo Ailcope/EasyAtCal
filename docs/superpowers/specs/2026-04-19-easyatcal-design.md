@@ -66,7 +66,7 @@ EasyAtCal/
 ## Components
 
 ### `api.py` — easy@work client
-- OAuth2 client-credentials or user-password auth (mirrors [php-eaw-client](https://github.com/easyatworkas/php-eaw-client) patterns).
+- JWT Bearer token auth via UI automation. Playwright headless login extracts JWT from `localStorage`. Replays token against `<region>.api.easyatwork.com/customers/{cid}/employees/{eid}/shifts`.
 - Caches access token at `~/.cache/easyatcal/token.json`.
 - `fetch_shifts(user_id, from_date, to_date) -> list[Shift]`.
 - Handles pagination.
@@ -136,15 +136,27 @@ class CalendarBackend(Protocol):
 
 ```yaml
 easyatwork:
-  auth_mode: client            # or "user"
-  client_id: "xxx"
-  client_secret: "xxx"         # env EAW_CLIENT_SECRET overrides
-  base_url: "https://api.easyatwork.com"
+  api_url: "https://eu-west-3.api.easyatwork.com"
+  customer_id: 0
+  employee_id: 0
+  ui_version: "v3.0.0"
+  
+  # Auth configuration for Playwright UI login
+  email: "user@example.com"
+  password: "..."              # env EAW_PASSWORD overrides
+  login_url: "https://app.easyatwork.com/login"
+  app_url: "https://app.easyatwork.com"
+  login_selectors:
+    email_input: "input[type='email']"
+    password_input: "input[type='password']"
+    submit_button: "button[type='submit']"
+    post_login_wait: ".dashboard"
+  headless: true
+  login_timeout_ms: 30000
 
 sync:
   lookback_days: 7
   lookahead_days: 90
-  user_id: null                # null = self
 
 backend: eventkit              # or "ics"
 
@@ -159,7 +171,7 @@ logging:
   level: INFO
 ```
 
-Env vars override YAML: `EAW_CLIENT_ID`, `EAW_CLIENT_SECRET`, `EAW_USERNAME`, `EAW_PASSWORD`.
+Env vars override YAML: `EAW_PASSWORD`.
 
 ## Error handling
 
@@ -186,7 +198,7 @@ Logs rotate daily, retained 7 days.
 
 ## Open questions / deferred
 
-- Exact easy@work API endpoints and pagination style — TBD during implementation by inspecting [php-eaw-client](https://github.com/easyatworkas/php-eaw-client).
+- Tenant-specific IDs required (`customer_id`, `employee_id`), which the user must extract from DevTools before first sync or the URL constructor raises an error.
 - Whether to support multi-user sync in v1 — deferred; single user only.
 - Whether to publish to PyPI — yes once v0.1 ships, but not blocking first release.
 
