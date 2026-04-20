@@ -125,6 +125,9 @@ class EventKitBackend:
             f"{self.calendar_source!r}. Create it in Calendar.app first."
         )
 
+    def set_all_shifts(self, shifts: list[Shift]) -> None:
+        pass
+
     def apply(self, changes: Changes) -> ApplyResult:
         result = ApplyResult()
         try:

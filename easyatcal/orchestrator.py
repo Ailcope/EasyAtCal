@@ -66,6 +66,9 @@ def run_sync(
         extra={"event_id": "sync.compute_changes.ok"}
     )
 
+    if hasattr(backend, "set_all_shifts"):
+        backend.set_all_shifts(remote_shifts)
+
     raised: BackendError | None = None
     try:
         result: ApplyResult = backend.apply(changes)
@@ -150,5 +153,6 @@ def _persist(
             shift_to_event=new_shift_to_event,
             shift_updated_at=new_updated_at,
             last_sync=now.isoformat(),
+            preferences=state.preferences.copy(),
         ),
     )
