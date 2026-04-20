@@ -81,15 +81,16 @@ def test_fetch_shifts_sends_bearer_and_laravel_params(tmp_path: Path) -> None:
     route = respx.get(SHIFTS_URL).mock(
         return_value=httpx.Response(200, json={"data": []})
     )
-    client = SessionEawClient(
-        shifts_url=SHIFTS_URL,
-        session_store=_seeded_store(tmp_path),
-    )
-    client.fetch_shifts(
-        from_date=date(2026, 4, 20), to_date=date(2026, 4, 27)
-    )
-    req = route.calls.last.request
-    assert req.headers["Authorization"] == f"Bearer {FAKE_JWT}"
+    with patch("keyring.get_password", return_value=FAKE_JWT):
+        client = SessionEawClient(
+            shifts_url=SHIFTS_URL,
+            session_store=_seeded_store(tmp_path),
+        )
+        client.fetch_shifts(
+            from_date=date(2026, 4, 20), to_date=date(2026, 4, 27)
+        )
+        req = route.calls.last.request
+        assert req.headers["Authorization"] == f"Bearer {FAKE_JWT}"
     assert req.headers["X-Ui-Version"] == "2.313.0"
     # Space-separated Laravel datetime (url-encoded as %20 or +)
     qs = req.url.query.decode()
