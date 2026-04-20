@@ -39,6 +39,8 @@ def _to_event(
     ev.add("dtend", shift.end)
     ev.add("dtstamp", shift.updated_at)
     ev.add("last-modified", shift.updated_at)
+    ev.add("sequence", 0)
+    ev.add("status", "CONFIRMED")
     if shift.location:
         ev.add("location", shift.location)
     if shift.notes:
