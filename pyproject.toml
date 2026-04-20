@@ -29,6 +29,7 @@ dev = [
     "freezegun>=1.4",
     "mypy>=1.10",
     "types-PyYAML",
+    "ruff>=0.6",
 ]
 
 [project.scripts]
