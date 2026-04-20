@@ -20,7 +20,12 @@ Works with **macOS EventKit** &bull; **Google Calendar** &bull; **Windows Outloo
 
 ## Overview
 
-A CLI tool for syncing your [easy@work](https://www.easyatwork.com) shifts into Apple Calendar, Google Calendar, or standard ICS files. It runs locally, fetches your upcoming shifts, and pushes them to your preferred calendar app. It can also be run as a daemon to keep your calendar up to date in the background.
+**EasyAtCal** is a CLI tool designed to automatically synchronize your [easy@work](https://www.easyatwork.com) work schedule directly into Apple Calendar, Google Calendar, or standard ICS files. It runs locally, fetches your upcoming shifts, and pushes them to your preferred personal calendar app. It can even be run as a background daemon to keep your calendar up to date continuously!
+
+### What is easy@work?
+**easy@work** is a popular workforce management, timesheet, and employee scheduling platform used by major global brands, retail stores, and fast-food chains—most notably **McDonald's**. If you work at a McDonald's restaurant or any other company that uses the easy@work employee portal to handle your shift planning and rotas, **EasyAtCal** is the perfect companion to automate your personal schedule management.
+
+### Features
 
 - **Automated Login & Discovery.** No public API required. It uses Playwright to securely log in via a headless browser, extracting both your session token and your unique account IDs (`customer_id`, `employee_id`) automatically.
 - **Secure Session.** Your JWT is securely cached in your OS's native credential store (Keychain on macOS, Credential Locker on Windows) via the `keyring` library.
