@@ -57,7 +57,7 @@ class EawClient:
         expires_at = datetime.fromisoformat(data["expires_at"])
         if expires_at <= datetime.now(UTC):
             return None
-        return data["access_token"]
+        return str(data["access_token"])
 
     def _fetch_token(self) -> str:
         try:
@@ -74,7 +74,7 @@ class EawClient:
         if r.status_code != 200:
             raise AuthError(f"auth failed: {r.status_code} {r.text}")
         data = r.json()
-        token = data["access_token"]
+        token = str(data["access_token"])
         expires_at = datetime.now(UTC) + timedelta(
             seconds=int(data.get("expires_in", 3600))
         )
@@ -99,13 +99,14 @@ class EawClient:
         """Return list[Shift] between from_date (inclusive) and to_date (exclusive)."""
         token = self.authenticate()
         url: str | None = f"{self.base_url}/v1/shifts"
-        params: dict[str, str] | None = {
+        headers = {"Authorization": f"Bearer {token}"}
+        first_params: dict[str, str] = {
             "from": from_date.isoformat(),
             "to": to_date.isoformat(),
         }
         if user_id is not None:
-            params["user_id"] = user_id
-        headers = {"Authorization": f"Bearer {token}"}
+            first_params["user_id"] = user_id
+        params: dict[str, str] | None = first_params
 
         out: list[Shift] = []
         while url is not None:
@@ -145,7 +146,10 @@ class EawClient:
                         )
                     )
                 url = payload.get("next")
-                params = None  # next URL already includes cursor
+                if url:
+                    # next URL already includes cursor. httpx strips the
+                    # URL query when params={} is passed, so use None.
+                    params = None
             except (KeyError, TypeError, ValueError) as e:
                 raise ApiError(
                     f"Unexpected API response shape. Failed to parse: {e}. "

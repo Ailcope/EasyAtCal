@@ -20,7 +20,7 @@ class EventKitPermissionError(RuntimeError):
     pass
 
 
-def _import_eventkit():  # pragma: no cover — platform guard
+def _import_eventkit() -> Any:  # pragma: no cover — platform guard
     if sys.platform != "darwin":
         raise EventKitUnavailableError("EventKit backend requires macOS")
     try:
@@ -40,7 +40,7 @@ def _event_store() -> Any:  # pragma: no cover — exercised via mocks in tests
     granted = {"ok": False, "err": None}
     done = _E()
 
-    def _cb(ok, err):
+    def _cb(ok: bool, err: Any) -> None:
         granted["ok"] = bool(ok)
         granted["err"] = err
         done.set()
@@ -59,7 +59,7 @@ def _event_store() -> Any:  # pragma: no cover — exercised via mocks in tests
     return store
 
 
-def _new_event(store, calendar, shift: Shift):  # pragma: no cover
+def _new_event(store: Any, calendar: Any, shift: Shift) -> Any:  # pragma: no cover
     EventKit = _import_eventkit()
     import Foundation  # type: ignore[import-not-found]
 
@@ -86,7 +86,7 @@ class EventKitBackend:
         self._store = _event_store()
         self._calendar = self._resolve_calendar()
 
-    def _resolve_calendar(self):
+    def _resolve_calendar(self) -> Any:
         calendars = self._store.calendarsForEntityType_(0)
         for cal in calendars:
             if (
@@ -122,7 +122,7 @@ class EventKitBackend:
                     result.mapping[shift.id] = event.calendarItemExternalIdentifier()
                     continue
                 existing.setTitle_(shift.title)
-                import Foundation  # type: ignore[import-not-found]
+                import Foundation
                 existing.setStartDate_(
                     Foundation.NSDate.dateWithTimeIntervalSince1970_(
                         shift.start.timestamp()

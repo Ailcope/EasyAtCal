@@ -2,17 +2,19 @@ PY := .venv/bin/python
 PIP := .venv/bin/pip
 PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
+MYPY := .venv/bin/mypy
 
-.PHONY: help venv install lint fmt test cov check build clean
+.PHONY: help venv install lint types fmt test cov check build clean
 
 help:
 	@echo "make venv     - create .venv and install in dev mode"
 	@echo "make install  - re-install package with dev extras"
 	@echo "make lint     - ruff check"
+	@echo "make types    - mypy strict"
 	@echo "make fmt      - ruff format"
 	@echo "make test     - run pytest"
 	@echo "make cov      - run pytest with coverage + 85% gate"
-	@echo "make check    - lint + test (what CI does)"
+	@echo "make check    - lint + types + cov (what CI does)"
 	@echo "make build    - build sdist + wheel into dist/"
 	@echo "make clean    - wipe build artifacts"
 
@@ -27,6 +29,9 @@ install:
 lint:
 	$(RUFF) check easyatcal tests
 
+types:
+	$(MYPY) easyatcal
+
 fmt:
 	$(RUFF) format easyatcal tests
 	$(RUFF) check --fix easyatcal tests
@@ -37,7 +42,7 @@ test:
 cov:
 	$(PYTEST) --cov=easyatcal --cov-fail-under=85
 
-check: lint cov
+check: lint types cov
 
 build:
 	$(PY) -m pip install --upgrade build

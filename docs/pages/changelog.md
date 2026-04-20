@@ -6,30 +6,6 @@ All notable changes to this project are documented here. Format follows
 
 ## [Unreleased]
 
-### Added
-- Structured log events in `run_sync` with `event_id` extra (`sync.fetch.ok`,
-  `sync.fetch.error`, `sync.compute_changes.ok`, `sync.apply.ok`,
-  `sync.apply.partial`, `sync.complete`). JSON formatter propagates `event_id`.
-- `--verbose` / `--quiet` global flags override config `logging.level`.
-- `user_id` parameter plumbed through `EawClient.fetch_shifts` and
-  `run_sync`, so the configured `sync.user_id` narrows the API query.
-- `EAW_BASE_URL` env override for `easyatwork.base_url`.
-- Defensive API payload parsing: unexpected response shape now raises
-  `ApiError` with the observed top-level keys.
-- Exponential backoff in `watch` on consecutive fatal errors (capped 1 h).
-- `mypy` strict wired into Makefile (`make types`, `make check`) and CI.
-- mkdocs-material site (`docs/pages/`, `mkdocs.yml`, `.github/workflows/docs.yml`)
-  auto-published to GitHub Pages from README/CONTRIBUTING/CHANGELOG.
-- Dockerfile + `.dockerignore` for container deployments.
-- README "Known limitations" section documenting that the easy@work API
-  shape assumed by `api.py` is unverified against the reference
-  `php-eaw-client` (which could not be located).
-
-### Fixed
-- Pagination: passing `params={}` to httpx on the second request was
-  stripping the `cursor=…` query from the server-provided `next` URL,
-  causing an infinite loop. Now reset to `None`.
-
 ## [0.2.0] — 2026-04-20
 
 ### Changed

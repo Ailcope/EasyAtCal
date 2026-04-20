@@ -4,13 +4,15 @@ import shutil
 import time
 from datetime import UTC
 from pathlib import Path
+from typing import Any
 
 import typer
 import yaml
 
 from easyatcal.api import EawClient
+from easyatcal.backends.base import CalendarBackend
 from easyatcal.backends.ics import IcsBackend
-from easyatcal.config import load_config
+from easyatcal.config import Config, load_config
 from easyatcal.logging_setup import configure_logging
 from easyatcal.orchestrator import run_sync
 from easyatcal.paths import (
@@ -89,7 +91,7 @@ def _root(
 
 # ---------- helpers ----------
 
-def _build_api_client(cfg):
+def _build_api_client(cfg: Config) -> EawClient:
     return EawClient(
         client_id=cfg.easyatwork.client_id,
         client_secret=cfg.easyatwork.client_secret,
@@ -98,7 +100,7 @@ def _build_api_client(cfg):
     )
 
 
-def _build_backend(cfg):
+def _build_backend(cfg: Config) -> CalendarBackend:
     if cfg.backend == "ics":
         return IcsBackend(
             output_path=Path(cfg.backends.ics.output_path).expanduser(),
@@ -212,7 +214,7 @@ def watch_cmd(
 
     stop = False
 
-    def _handler(signum, _frame):  # noqa: ARG001
+    def _handler(signum: int, _frame: Any) -> None:  # noqa: ARG001
         nonlocal stop
         stop = True
 
@@ -255,6 +257,26 @@ def watch_cmd(
         pass
     typer.echo("\nStopped.")
 
+
+@app.command("install-completion")
+def install_completion_cmd() -> None:
+    """Install shell auto-completions for eaw-sync."""
+    import os
+    import subprocess
+
+
+    # Run typer's underlying completion installation
+    shell = os.environ.get("SHELL", "")
+    if "zsh" in shell:
+        subprocess.run(["eaw-sync", "--install-completion", "zsh"], check=False)
+    elif "bash" in shell:
+        subprocess.run(["eaw-sync", "--install-completion", "bash"], check=False)
+    elif "fish" in shell:
+        subprocess.run(["eaw-sync", "--install-completion", "fish"], check=False)
+    else:
+        typer.echo(f"Unsupported shell: {shell}. Try running: eaw-sync --install-completion [bash|zsh|fish]", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("Restart your shell to apply completions.")
 
 # ---------- state ----------
 

@@ -27,6 +27,7 @@ dev = [
     "respx>=0.21",
     "freezegun>=1.4",
     "ruff>=0.6",
+    "mypy>=1.10",
 ]
 
 [project.scripts]
@@ -52,3 +53,8 @@ ignore = ["E501"]  # line length handled by formatter
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B017", "B018"]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
