@@ -21,7 +21,7 @@ def _to_event(
     event_title_format: str = "{title}",
     alarm_minutes_before: int | None = None,
 ) -> Any:
-    from datetime import timedelta
+    from datetime import UTC, datetime, timedelta
 
     from icalendar import Alarm
     ev = Event()  # type: ignore[no-untyped-call]
@@ -37,9 +37,12 @@ def _to_event(
     ev.add("summary", title)
     ev.add("dtstart", shift.start)
     ev.add("dtend", shift.end)
-    ev.add("dtstamp", shift.updated_at)
-    ev.add("last-modified", shift.updated_at)
-    ev.add("sequence", 0)
+    # Always use current time for dtstamp to indicate when the file was generated
+    now = datetime.now(UTC)
+    ev.add("dtstamp", now)
+    # Force an update by bumping the sequence (or using the timestamp) and updating last-modified
+    ev.add("last-modified", now)
+    ev.add("sequence", int(now.timestamp()))
     ev.add("status", "CONFIRMED")
     if shift.location:
         ev.add("location", shift.location)
