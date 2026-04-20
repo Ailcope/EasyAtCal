@@ -20,6 +20,8 @@ class SyncSummary:
 
 
 class ShiftFetcher(Protocol):
+    def authenticate(self) -> object: ...
+
     def fetch_shifts(
         self, from_date: date, to_date: date, user_id: str | None = None
     ) -> list[Shift]: ...

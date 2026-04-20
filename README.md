@@ -19,30 +19,55 @@ Calendar. Run it on a Mac, iCloud fans out to iPhone/iPad/Watch.
 
 ```bash
 pip install easyatcal                   # core + ICS backend
-pip install 'easyatcal[eventkit]'       # add macOS EventKit backend
+pip install 'easyatcal[eventkit]'       # + macOS EventKit backend
+pip install 'easyatcal[playwright]'     # + headless-browser login (default auth)
+playwright install chromium             # one-time ~200 MB browser download
 ```
 
 Python 3.11+. macOS for EventKit; any OS for ICS.
+
+## Authentication
+
+easy@work has no public developer API. The default auth mode (`user`) logs
+a headless Chromium instance into `app.easyatwork.com` with your real
+credentials, captures the session cookies, and reuses them for all
+subsequent HTTP calls. Your password is never stored on disk — it lives
+only in the `EAW_PASSWORD` env var (or is prompted interactively).
+
+```bash
+EAW_PASSWORD='...' eaw-sync login       # persists cookies; do once, or when expired
+eaw-sync logout                          # wipe cookies
+```
+
+Cookies are written to `~/.cache/easyatcal/session.json` (0600) via
+Playwright's `storage_state`.
+
+An alternate `client` mode (OAuth client_credentials) is scaffolded in
+the code for forward-compat — if easy@work ever publishes an API, flip
+`auth_mode: client` and fill in the OAuth creds.
 
 ## Quickstart
 
 ```bash
 eaw-sync config init                    # scaffold config
-$EDITOR ~/.config/easyatcal/config.yaml
-eaw-sync doctor                         # check config + auth + backend
+$EDITOR ~/.config/easyatcal/config.yaml # set email, app_url, shifts_endpoint
+EAW_PASSWORD='...' eaw-sync login       # one-time headless login
+eaw-sync doctor                         # check config + session + backend
 eaw-sync sync                           # one shot
 eaw-sync watch --interval-seconds 900   # loop every 15 min
 ```
 
 ## Configure
 
-Minimal `config.yaml`:
+Minimal `config.yaml` (user mode):
 
 ```yaml
 easyatwork:
-  client_id: "REPLACE_ME"
-  client_secret: "REPLACE_ME"     # or export EAW_CLIENT_SECRET
-  base_url: "https://api.easyatwork.com"
+  auth_mode: user
+  email: "me@example.com"
+  login_url: "https://app.easyatwork.com/"
+  app_url: "https://app.easyatwork.com"
+  shifts_endpoint: "/api/v1/shifts"   # capture from DevTools → Network
 
 sync:
   lookback_days: 7
@@ -109,14 +134,21 @@ eaw-sync --install-completion        # bash / zsh / fish
 
 ## Known limitations
 
-- **API shape is unverified.** The easy@work reference client
-  (`php-eaw-client`) could not be located at design time, so the request /
-  response shape this client assumes (`POST /oauth/token`,
-  `GET /v1/shifts?from=&to=&user_id=`, pagination via `next`) is a
-  best-guess based on typical OAuth2 + cursor conventions. On first
-  contact with a real tenant, expect to patch `easyatcal/api.py`. Parsing
-  is defensive — unexpected payload shape raises `ApiError` with the
-  observed top-level keys.
+- **No public API.** easy@work does not publish developer docs. The
+  default `user` auth mode scrapes the web app via Playwright and reuses
+  its session cookies, which works against the real tenant but depends
+  on the SPA's private endpoints.
+- **`shifts_endpoint` is tenant-specific.** Open
+  `app.easyatwork.com` in a browser, DevTools → Network, filter `XHR`,
+  open your schedule view, find the JSON request that returns your
+  shifts, copy its path to `easyatwork.shifts_endpoint`. Session-mode
+  parsing auto-detects common shapes (`{"data": [...]}`,
+  `{"results": [...]}`, bare list, `id`/`uuid`/`shiftId`,
+  `start`/`starts_at`/`from`, etc) — unexpected shapes raise `ApiError`
+  with the observed top-level keys.
+- **OAuth (`client` mode) is unverified.** Kept in-tree for forward-compat
+  should easy@work publish a developer API, but there is no public
+  reference client (`php-eaw-client` does not exist as a public repo).
 
 ## Troubleshooting
 

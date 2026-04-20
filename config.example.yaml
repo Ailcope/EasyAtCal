@@ -1,15 +1,36 @@
 easyatwork:
-  auth_mode: client            # "client" or "user"
-  client_id: "REPLACE_ME"
-  client_secret: "REPLACE_ME"  # or set EAW_CLIENT_SECRET env var
-  base_url: "https://api.easyatwork.com"
+  # "user" = scrape the web SPA via Playwright (recommended — no public API).
+  # "client" = OAuth client_credentials (only if a public API is ever published).
+  auth_mode: user
+
+  # ---------- user mode ----------
+  email: "me@example.com"         # or set EAW_EMAIL
+  # Password is NEVER stored on disk. Provide it via env var for `eaw-sync login`:
+  #   EAW_PASSWORD=... eaw-sync login
+  # or enter it interactively when prompted.
+  login_url: "https://app.easyatwork.com/"
+  app_url: "https://app.easyatwork.com"
+  # Path the SPA uses to load your shifts. Inspect DevTools → Network while
+  # you open the schedule view, find the JSON request, paste the path here.
+  # Leave blank until you know it — sync will raise a clear error.
+  shifts_endpoint: ""             # e.g. "/api/v1/shifts"
+  # Selectors for the login form. Override if the defaults don't match.
+  # email_selector: "input[type='email']"
+  # password_selector: "input[type='password']"
+  # submit_selector: "button[type='submit']"
+  headless: true                  # set false to watch the browser
+
+  # ---------- client mode (OAuth, hypothetical) ----------
+  # client_id: "REPLACE_ME"
+  # client_secret: "REPLACE_ME"   # or EAW_CLIENT_SECRET env var
+  # base_url: "https://api.easyatwork.com"
 
 sync:
   lookback_days: 7
   lookahead_days: 90
-  user_id: null                # null = self
+  user_id: null                   # null = self
 
-backend: eventkit              # "eventkit" or "ics"
+backend: eventkit                 # "eventkit" or "ics"
 
 backends:
   eventkit:
@@ -20,4 +41,4 @@ backends:
 
 logging:
   level: INFO
-  format: text                 # "text" or "json"
+  format: text                    # "text" or "json"

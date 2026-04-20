@@ -10,17 +10,20 @@ import typer
 import yaml
 
 from easyatcal.api import EawClient
+from easyatcal.api_session import SessionEawClient
 from easyatcal.backends.base import CalendarBackend
 from easyatcal.backends.ics import IcsBackend
 from easyatcal.config import Config, load_config
 from easyatcal.logging_setup import configure_logging
-from easyatcal.orchestrator import run_sync
+from easyatcal.orchestrator import ShiftFetcher, run_sync
 from easyatcal.paths import (
     config_path,
     log_path,
+    session_state_path,
     state_path,
     token_cache_path,
 )
+from easyatcal.session import SessionStore
 
 app = typer.Typer(help="EasyAtCal — sync easy@work shifts to Apple Calendar.")
 config_app = typer.Typer(help="Manage the config file.")
@@ -91,12 +94,21 @@ def _root(
 
 # ---------- helpers ----------
 
-def _build_api_client(cfg: Config) -> EawClient:
-    return EawClient(
-        client_id=cfg.easyatwork.client_id,
-        client_secret=cfg.easyatwork.client_secret,
-        base_url=cfg.easyatwork.base_url,
-        token_cache=token_cache_path(),
+def _build_api_client(cfg: Config) -> ShiftFetcher:
+    if cfg.easyatwork.auth_mode == "client":
+        # OAuth public-API mode (kept for forward-compat).
+        assert cfg.easyatwork.client_id and cfg.easyatwork.client_secret
+        return EawClient(
+            client_id=cfg.easyatwork.client_id,
+            client_secret=cfg.easyatwork.client_secret,
+            base_url=cfg.easyatwork.base_url,
+            token_cache=token_cache_path(),
+        )
+    # auth_mode == "user" — session-cookie mode
+    return SessionEawClient(
+        app_url=cfg.easyatwork.app_url,
+        shifts_endpoint=cfg.easyatwork.shifts_endpoint,
+        session_store=SessionStore(session_state_path()),
     )
 
 
@@ -134,8 +146,74 @@ def config_show() -> None:
     """Print the effective config with secrets redacted."""
     cfg = load_config(_cfg_path())
     dumped = cfg.model_dump()
-    dumped["easyatwork"]["client_secret"] = "***"
+    if dumped["easyatwork"].get("client_secret"):
+        dumped["easyatwork"]["client_secret"] = "***"
     typer.echo(yaml.safe_dump(dumped, sort_keys=False))
+
+
+# ---------- login (session auth) ----------
+
+@app.command("login")
+def login_cmd(
+    password_env: str = typer.Option(
+        "EAW_PASSWORD",
+        "--password-env",
+        help="Env var holding the password. If unset, prompt interactively.",
+    ),
+    headful: bool = typer.Option(
+        False,
+        "--headful",
+        help="Run browser visibly (debug failing login).",
+    ),
+) -> None:
+    """Open a headless browser, log in to easy@work, persist the session.
+
+    Requires ``auth_mode: user`` and ``email`` in config, plus the
+    ``playwright`` optional extra installed.
+    """
+    import os
+
+    from easyatcal.auth_user import LoginError, PlaywrightMissingError, do_login
+
+    cfg = load_config(_cfg_path())
+    configure_logging(
+        level=_get_log_level(cfg.logging.level),
+        log_file=log_path(),
+        fmt=cfg.logging.format,
+    )
+
+    if cfg.easyatwork.auth_mode != "user":
+        typer.echo("auth_mode is not 'user' — nothing to log in to.", err=True)
+        raise typer.Exit(code=1)
+
+    password = os.environ.get(password_env)
+    if password is None:
+        password = typer.prompt("Password", hide_input=True)
+    if not password:
+        typer.echo("Empty password — aborting.", err=True)
+        raise typer.Exit(code=1)
+
+    auth = cfg.easyatwork.model_copy(update={"headless": not headful})
+    storage = session_state_path()
+
+    try:
+        do_login(cfg=auth, password=password, storage_path=storage)
+    except PlaywrightMissingError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1) from e
+    except LoginError as e:
+        typer.echo(f"Login failed: {e}", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(f"Logged in. Session stored at {storage}")
+
+
+@app.command("logout")
+def logout_cmd() -> None:
+    """Delete the persisted session cookies."""
+    path = session_state_path()
+    store = SessionStore(path)
+    store.clear()
+    typer.echo(f"Cleared {path}")
 
 
 # ---------- sync / watch ----------
@@ -338,15 +416,21 @@ def doctor_cmd() -> None:
     configure_logging(level=cfg.logging.level, log_file=log_path(), fmt=cfg.logging.format)
 
     # 2. Auth
+    mode = cfg.easyatwork.auth_mode
     try:
         api = _build_api_client(cfg)
         api.authenticate()
-        typer.echo("[ OK ] auth: token obtained")
+        if mode == "client":
+            typer.echo("[ OK ] auth: OAuth token obtained")
+        else:
+            typer.echo("[ OK ] auth: session cookies loaded")
     except AuthError as e:
-        typer.echo(f"[FAIL] auth: {e}")
+        typer.echo(f"[FAIL] auth ({mode}): {e}")
+        if mode == "user":
+            typer.echo("       Run `eaw-sync login` to create a session.")
         failures += 1
     except Exception as e:
-        typer.echo(f"[FAIL] auth: {e}")
+        typer.echo(f"[FAIL] auth ({mode}): {e}")
         failures += 1
 
     # 3. Backend
