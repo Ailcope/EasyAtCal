@@ -5,14 +5,55 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EasyAtWorkAuth(BaseModel):
-    auth_mode: Literal["client", "user"]
-    client_id: str
-    client_secret: str
+    """Credentials + endpoint config.
+
+    Two modes:
+    - ``client``: OAuth2 client_credentials against a (hypothetical) public
+      API. Kept for forward-compat; not used against the real tenant.
+    - ``user``: Scrape the web SPA via Playwright. The user logs in once
+      (``eaw-sync login``) and cookies are persisted. All shift requests
+      go through the same web origin with those cookies.
+    """
+
+    auth_mode: Literal["client", "user"] = "user"
+
+    # client mode
+    client_id: str | None = None
+    client_secret: str | None = None
     base_url: str = "https://api.easyatwork.com"
+
+    # user mode
+    email: str | None = None
+    login_url: str = "https://app.easyatwork.com/"
+    app_url: str = "https://app.easyatwork.com"
+    # Which endpoint to hit for shifts once logged in.
+    # Blank → client raises on sync, prompting HAR inspection.
+    shifts_endpoint: str = ""
+    # Playwright login form selectors (override per tenant if the form
+    # layout differs).
+    email_selector: str = "input[type='email'], input[name='email'], input[name='username']"
+    password_selector: str = "input[type='password']"
+    submit_selector: str = "button[type='submit'], input[type='submit']"
+    # Browser headless by default; set false for first-run debug.
+    headless: bool = True
+    # Max wait after submit for navigation to finish (ms).
+    login_timeout_ms: int = 20000
+
+    @model_validator(mode="after")
+    def _check_mode_fields(self) -> EasyAtWorkAuth:
+        if self.auth_mode == "client" and (
+            not self.client_id or not self.client_secret
+        ):
+            raise ValueError(
+                "auth_mode=client requires client_id and client_secret"
+            )
+        if self.auth_mode == "user" and not self.email:
+            raise ValueError("auth_mode=user requires email")
+        return self
 
 
 class SyncSettings(BaseModel):
@@ -55,10 +96,14 @@ class Config(BaseModel):
         return v
 
 
-_ENV_OVERRIDES = {
+_ENV_OVERRIDES: dict[str, tuple[str, str]] = {
     "EAW_CLIENT_ID": ("easyatwork", "client_id"),
     "EAW_CLIENT_SECRET": ("easyatwork", "client_secret"),
     "EAW_BASE_URL": ("easyatwork", "base_url"),
+    "EAW_EMAIL": ("easyatwork", "email"),
+    "EAW_LOGIN_URL": ("easyatwork", "login_url"),
+    "EAW_APP_URL": ("easyatwork", "app_url"),
+    "EAW_SHIFTS_ENDPOINT": ("easyatwork", "shifts_endpoint"),
 }
 
 

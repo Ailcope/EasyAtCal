@@ -7,6 +7,30 @@ All notable changes to this project are documented here. Format follows
 ## [Unreleased]
 
 ### Added
+- **Session-cookie auth via headless browser.** New `auth_mode: user`
+  (now the default) drives a headless Chromium through the easy@work
+  web login, persists cookies to `~/.cache/easyatcal/session.json`, and
+  replays them on every HTTP call. `eaw-sync login` / `eaw-sync logout`
+  commands. Password never stored on disk — passes via `EAW_PASSWORD`
+  env or interactive prompt.
+- `SessionEawClient` with flexible payload shape detection
+  (`data` / `results` / `items` / `shifts` / bare list) and heuristic
+  field mapping (`id`/`uuid`/`shiftId`, `start`/`starts_at`/`from`, …).
+  Returns `AuthError` on HTTP 401 with a "run login" hint.
+- `easyatcal.session.SessionStore` atomic 0600 cookie-jar persistence.
+- `easyatcal.auth_user.do_login` Playwright driver with configurable
+  selectors (`email_selector`, `password_selector`, `submit_selector`)
+  and `headless` toggle.
+- Optional `playwright` extra. `mypy.overrides` for `playwright.*`.
+- 18 new tests (session store, session-mode fetch, CLI login/logout).
+
+### Changed
+- `doctor` and `auth test` now report session / OAuth status distinctly.
+- `ShiftFetcher` protocol gains `authenticate() -> object`.
+- `shifts_endpoint` is blank by default; sync raises a clear
+  "inspect HAR" error until set.
+
+### Added
 - Structured log events in `run_sync` with `event_id` extra (`sync.fetch.ok`,
   `sync.fetch.error`, `sync.compute_changes.ok`, `sync.apply.ok`,
   `sync.apply.partial`, `sync.complete`). JSON formatter propagates `event_id`.

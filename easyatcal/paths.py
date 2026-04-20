@@ -19,5 +19,10 @@ def token_cache_path() -> Path:
     return Path(user_cache_dir(APP)) / "token.json"
 
 
+def session_state_path() -> Path:
+    """Playwright storage_state (cookies + localStorage) for user auth."""
+    return Path(user_cache_dir(APP)) / "session.json"
+
+
 def log_path() -> Path:
     return Path(user_data_dir(APP)) / "logs" / "eaw-sync.log"

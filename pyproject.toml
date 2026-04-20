@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 eventkit = ["pyobjc-framework-EventKit>=10.0; sys_platform == 'darwin'"]
+playwright = ["playwright>=1.44"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
@@ -43,6 +44,14 @@ packages = ["easyatcal"]
 testpaths = ["tests"]
 addopts = "-v --strict-markers"
 
+[tool.coverage.run]
+omit = [
+    # Playwright-driven, exercised only on real browsers.
+    "easyatcal/auth_user.py",
+    # EventKit shim is macOS + PyObjC, exercised via mocks only.
+    "easyatcal/backends/eventkit.py",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -58,3 +67,7 @@ ignore = ["E501"]  # line length handled by formatter
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["playwright.*"]
+ignore_missing_imports = true
