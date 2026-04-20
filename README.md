@@ -2,11 +2,11 @@
 
 # EasyAtCal
 
-[![CI](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml/badge.svg)](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/Ailcope/EasyAtCal)
-[![PyPI](https://img.shields.io/pypi/v/easyatcal.svg)](https://pypi.org/project/easyatcal/)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Ailcope/EasyAtCal/ci.yml?branch=main&label=CI&logo=github&logoColor=white&color=brightgreen)](https://github.com/Ailcope/EasyAtCal/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-90%25-brightgreen.svg?logo=codecov&logoColor=white)](https://github.com/Ailcope/EasyAtCal)
+[![Release](https://img.shields.io/github/v/release/Ailcope/EasyAtCal?label=Release&logo=github&logoColor=white&color=blue)](https://github.com/Ailcope/EasyAtCal/releases)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative&logoColor=white)](./LICENSE)
 
 **One-way sync of easy@work shifts into Apple Calendar, Google Calendar, or standard ICS files.**
 
