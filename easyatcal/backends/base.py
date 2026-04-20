@@ -41,6 +41,10 @@ class BackendError(RuntimeError):
 
 
 class CalendarBackend(Protocol):
+    def set_all_shifts(self, shifts: list[Shift]) -> None:
+        """Provide the backend with the complete list of known valid shifts."""
+        ...
+
     def apply(self, changes: Changes) -> ApplyResult:
         """Apply the given changes and return an ApplyResult.
 
