@@ -138,15 +138,106 @@ def _build_backend(cfg: Config) -> CalendarBackend:
 # ---------- config ----------
 
 @config_app.command("init")
-def config_init() -> None:
+def config_init(
+    interactive: bool = typer.Option(
+        True,
+        "--interactive/--no-interactive",
+        help="Prompt for common configuration values interactively.",
+    ),
+) -> None:
     """Scaffold a config file at the user config dir."""
     target = _cfg_path()
     if target.exists():
         typer.echo(f"Config already exists at {target}", err=True)
         raise typer.Exit(code=1)
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(EXAMPLE_CONFIG, target)
-    typer.echo(f"Wrote {target}. Edit it before running `eaw-sync sync`.")
+    
+    with open(EXAMPLE_CONFIG, "r") as f:
+        template = f.read()
+
+    import locale
+    import os
+    import sys
+    
+    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
+    fr = lang.lower().startswith("fr")
+
+    if interactive:
+        
+        if fr:
+            typer.secho("🔧 Configurons la synchronisation de votre calendrier easy@work !\n", fg="cyan", bold=True)
+            email = typer.prompt("1. Quel est l'email de votre compte easy@work ?")
+            
+            title_format = typer.prompt(
+                "2. Comment souhaitez-vous nommer vos événements ?\n   (Variables disponibles: {title}, {location}, {notes})",
+                default="{title}"
+            )
+            
+            wants_alarm = typer.confirm("3. Voulez-vous un rappel avant vos shifts ?")
+            if wants_alarm:
+                alarm_mins = typer.prompt("   Combien de minutes avant le shift ?", default=60, type=int)
+                template = template.replace('alarm_minutes_before: null', f'alarm_minutes_before: {alarm_mins}')
+        else:
+            typer.secho("🔧 Let's set up your easy@work calendar sync!\n", fg="cyan", bold=True)
+            email = typer.prompt("1. What is your easy@work login email?")
+            
+            title_format = typer.prompt(
+                "2. How should we name your calendar events?\n   (Available variables: {title}, {location}, {notes})",
+                default="{title}"
+            )
+            
+            wants_alarm = typer.confirm("3. Do you want a reminder before your shifts?")
+            if wants_alarm:
+                alarm_mins = typer.prompt("   How many minutes before your shift?", default=60, type=int)
+                template = template.replace('alarm_minutes_before: null', f'alarm_minutes_before: {alarm_mins}')
+                
+        template = template.replace('email: "me@example.com"', f'email: "{email}"')
+        template = template.replace('event_title_format: "{title}"', f'event_title_format: "{title_format}"')
+            
+        backend_choices = ["ics"]
+        if sys.platform == "darwin":
+            backend_choices.append("eventkit")
+            if fr:
+                prompt_backend = "4. Quelle intégration de calendrier préférez-vous ?\n   [ics] Fichier universel (Compatible avec tout)\n   [eventkit] Directement dans Apple Calendar (macOS uniquement)\n  "
+            else:
+                prompt_backend = "4. Which calendar integration do you prefer?\n   [ics] File-based (Universal)\n   [eventkit] Direct to Apple Calendar (macOS only)\n  "
+            
+            backend = typer.prompt(prompt_backend, default="ics")
+            if backend in ["ics", "eventkit"]:
+                template = template.replace('backend: ics', f'backend: {backend}')
+        else:
+            if fr:
+                typer.echo("4. Utilisation du backend 'ics' (format universel pour Windows/Linux).")
+            else:
+                typer.echo("4. Using 'ics' backend (universal format for Windows/Linux).")
+            
+        if fr:
+            typer.secho("\n✅ Configuration générée avec succès !", fg="green")
+        else:
+            typer.secho("\n✅ Configuration generated successfully!", fg="green")
+
+    with open(target, "w") as f:
+        f.write(template)
+        
+    if fr:
+        typer.echo(f"Fichier écrit dans {target}.")
+    else:
+        typer.echo(f"Wrote {target}.")
+        
+    if interactive:
+        if fr:
+            typer.secho("\nProchaines étapes :", fg="cyan", bold=True)
+            typer.echo("1. Lancez `eaw-sync login` pour vous connecter.")
+            typer.echo("2. Lancez `eaw-sync sync` pour récupérer vos horaires.")
+        else:
+            typer.secho("\nNext steps:", fg="cyan", bold=True)
+            typer.echo("1. Run `eaw-sync login` to connect to your account.")
+            typer.echo("2. Run `eaw-sync sync` to fetch your shifts.")
+    else:
+        if fr:
+            typer.echo("Modifiez le fichier avant de lancer `eaw-sync sync`.")
+        else:
+            typer.echo("Edit the file before running `eaw-sync sync`.")
 
 
 @config_app.command("show")
