@@ -76,6 +76,9 @@ class IcsBackend:
         self.event_title_format = event_title_format
         self.alarm_minutes_before = alarm_minutes_before
 
+    def set_all_shifts(self, shifts: list[Shift]) -> None:
+        self._current = {s.id: s for s in shifts}
+
     def apply(self, changes: Changes) -> ApplyResult:
         mapping: dict[str, str] = {}
 
