@@ -1,0 +1,45 @@
+site_name: EasyAtCal
+site_description: "Sync your easy@work shifts with Apple Calendar."
+site_url: https://ailcope.github.io/EasyAtCal/
+repo_url: https://github.com/Ailcope/EasyAtCal
+repo_name: Ailcope/EasyAtCal
+
+theme:
+  name: material
+
+docs_dir: docs/pages
+
+palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search

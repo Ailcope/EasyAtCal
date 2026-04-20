@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -37,20 +38,46 @@ def run_sync(
     from_date = (now - timedelta(days=lookback_days)).date()
     to_date = (now + timedelta(days=lookahead_days)).date()
 
-    remote_shifts = api.fetch_shifts(
-        from_date=from_date, to_date=to_date, user_id=user_id
-    )
+    logger = logging.getLogger(__name__)
+
+    try:
+        remote_shifts = api.fetch_shifts(
+            from_date=from_date, to_date=to_date, user_id=user_id
+        )
+        logger.info(
+            f"Fetched {len(remote_shifts)} shifts from API",
+            extra={"event_id": "sync.fetch.ok"}
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch shifts from API: {e}",
+            extra={"event_id": "sync.fetch.error"}
+        )
+        raise
+
     state = load_state(state_path)
     changes = compute_changes(
         remote_shifts, state, known_updated_at=state.shift_updated_at
+    )
+    logger.info(
+        f"Computed changes: {len(changes.adds)} adds, {len(changes.updates)} updates, {len(changes.deletes)} deletes",
+        extra={"event_id": "sync.compute_changes.ok"}
     )
 
     raised: BackendError | None = None
     try:
         result: ApplyResult = backend.apply(changes)
+        logger.info(
+            "Successfully applied changes to backend",
+            extra={"event_id": "sync.apply.ok"}
+        )
     except BackendError as e:
         result = e.partial
         raised = e
+        logger.warning(
+            f"Partial failure applying changes: {e}",
+            extra={"event_id": "sync.apply.partial"}
+        )
 
     _persist(
         state=state,
@@ -73,6 +100,11 @@ def run_sync(
     if raised is not None:
         raised.summary = summary  # type: ignore[attr-defined]
         raise raised
+
+    logger.info(
+        f"Sync completed successfully: {added} added, {updated} updated, {summary.deletes} deleted",
+        extra={"event_id": "sync.complete"}
+    )
     return summary
 
 

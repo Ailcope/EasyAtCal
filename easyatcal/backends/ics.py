@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from icalendar import Calendar, Event
 
@@ -14,8 +15,8 @@ def _uid_for(shift_id: str) -> str:
     return f"{UID_PREFIX}{shift_id}"
 
 
-def _to_event(shift: Shift, uid: str) -> Event:
-    ev = Event()
+def _to_event(shift: Shift, uid: str) -> Any:
+    ev = Event()  # type: ignore[no-untyped-call]
     ev.add("uid", uid)
     ev.add("summary", shift.title)
     ev.add("dtstart", shift.start)
@@ -69,7 +70,7 @@ class IcsBackend:
         return ApplyResult(mapping=mapping, deleted_uids=confirmed_deletes)
 
     def _write(self) -> None:
-        cal = Calendar()
+        cal = Calendar()  # type: ignore[no-untyped-call]
         cal.add("prodid", "-//EasyAtCal//EN")
         cal.add("version", "2.0")
         for shift in self._current.values():

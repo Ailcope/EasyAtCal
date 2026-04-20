@@ -14,6 +14,8 @@ class _JsonFormatter(logging.Formatter):
             "logger": record.name,
             "msg": record.getMessage(),
         }
+        if hasattr(record, "event_id"):
+            payload["event_id"] = record.event_id
         if record.exc_info:
             payload["exc"] = self.formatException(record.exc_info)
         return json.dumps(payload)

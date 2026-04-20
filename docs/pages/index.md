@@ -107,17 +107,6 @@ Global flag: `--config-path PATH` overrides the default config location.
 eaw-sync --install-completion        # bash / zsh / fish
 ```
 
-## Known limitations
-
-- **API shape is unverified.** The easy@work reference client
-  (`php-eaw-client`) could not be located at design time, so the request /
-  response shape this client assumes (`POST /oauth/token`,
-  `GET /v1/shifts?from=&to=&user_id=`, pagination via `next`) is a
-  best-guess based on typical OAuth2 + cursor conventions. On first
-  contact with a real tenant, expect to patch `easyatcal/api.py`. Parsing
-  is defensive — unexpected payload shape raises `ApiError` with the
-  observed top-level keys.
-
 ## Troubleshooting
 
 - **"Calendar 'Work Shifts' not found"** — create it in Calendar.app first;
