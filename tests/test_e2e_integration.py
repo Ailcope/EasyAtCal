@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -7,6 +8,11 @@ import respx
 from easyatcal.api import EawClient
 from easyatcal.backends.ics import IcsBackend
 from easyatcal.orchestrator import run_sync
+
+# Pin "now" inside the fixture's date range (shifts on 2026-05-10/11) so those
+# shifts fall within the fetch window. A shift removed from the API is only
+# deleted when it was in-window; out-of-window past shifts are preserved.
+NOW = datetime(2026, 5, 11, 12, 0, tzinfo=UTC)
 
 
 @respx.mock
@@ -39,6 +45,7 @@ def test_real_fixture_sync(tmp_path: Path):
         state_path=tmp_path / "state.json",
         lookback_days=1,
         lookahead_days=7,
+        now=NOW,
     )
     
     assert summary.adds == 2
@@ -58,6 +65,7 @@ def test_real_fixture_sync(tmp_path: Path):
         state_path=tmp_path / "state.json",
         lookback_days=1,
         lookahead_days=7,
+        now=NOW,
     )
     assert summary2.adds == 0
     assert summary2.updates == 0
@@ -77,6 +85,7 @@ def test_real_fixture_sync(tmp_path: Path):
         state_path=tmp_path / "state.json",
         lookback_days=1,
         lookahead_days=7,
+        now=NOW,
     )
     assert summary3.adds == 0
     assert summary3.updates == 1

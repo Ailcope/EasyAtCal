@@ -10,6 +10,9 @@ from pathlib import Path
 class State:
     shift_to_event: dict[str, str] = field(default_factory=dict)
     shift_updated_at: dict[str, str] = field(default_factory=dict)
+    # shift_id -> ISO start datetime, used to tell a cancelled shift from one
+    # that merely aged out of the fetch window.
+    shift_start: dict[str, str] = field(default_factory=dict)
     last_sync: str | None = None
     preferences: dict[str, bool] = field(default_factory=dict)
 
@@ -22,6 +25,7 @@ def load_state(path: Path) -> State:
         return State(
             shift_to_event=dict(data.get("shift_to_event", {})),
             shift_updated_at=dict(data.get("shift_updated_at", {})),
+            shift_start=dict(data.get("shift_start", {})),
             last_sync=data.get("last_sync"),
             preferences=dict(data.get("preferences", {})),
         )

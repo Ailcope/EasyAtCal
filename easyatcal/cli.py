@@ -347,7 +347,12 @@ def sync_cmd(
         )
         state = load_state(state_path())
         changes = compute_changes(
-            remote, state, known_updated_at=state.shift_updated_at
+            remote,
+            state,
+            known_updated_at=state.shift_updated_at,
+            from_date=from_date,
+            to_date=to_date,
+            known_start=state.shift_start,
         )
         typer.echo(
             f"Dry run: {len(changes.adds)} add, "

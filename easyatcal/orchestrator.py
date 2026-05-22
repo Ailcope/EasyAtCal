@@ -59,7 +59,12 @@ def run_sync(
 
     state = load_state(state_path)
     changes = compute_changes(
-        remote_shifts, state, known_updated_at=state.shift_updated_at
+        remote_shifts,
+        state,
+        known_updated_at=state.shift_updated_at,
+        from_date=from_date,
+        to_date=to_date,
+        known_start=state.shift_start,
     )
     logger.info(
         f"Computed changes: {len(changes.adds)} adds, {len(changes.updates)} updates, {len(changes.deletes)} deletes",
@@ -123,16 +128,18 @@ def _persist(
 ) -> None:
     new_shift_to_event = dict(state.shift_to_event)
     new_updated_at = dict(state.shift_updated_at)
+    new_start = dict(state.shift_start)
 
     for shift_id, event_uid in result.mapping.items():
         new_shift_to_event[shift_id] = event_uid
 
-    # For every shift we successfully wrote, stamp the new updated_at.
+    # For every shift we successfully wrote, stamp the new updated_at and start.
     remote_by_id = {s.id: s for s in remote_shifts}
     for shift_id in result.mapping:
         shift = remote_by_id.get(shift_id)
         if shift is not None:
             new_updated_at[shift_id] = shift.updated_at.isoformat()
+            new_start[shift_id] = shift.start.isoformat()
 
     # Prune confirmed deletions.
     deleted_uid_set = set(result.deleted_uids)
@@ -141,10 +148,13 @@ def _persist(
         for sid, evt in new_shift_to_event.items()
         if evt not in deleted_uid_set
     }
-    # Drop matching updated_at entries for any shift whose event we just
-    # deleted (its shift_id no longer maps to an event in new_shift_to_event).
+    # Drop metadata for any shift whose event we just deleted (its shift_id no
+    # longer maps to an event in new_shift_to_event).
     new_updated_at = {
         sid: ts for sid, ts in new_updated_at.items() if sid in new_shift_to_event
+    }
+    new_start = {
+        sid: ts for sid, ts in new_start.items() if sid in new_shift_to_event
     }
 
     save_state(
@@ -152,6 +162,7 @@ def _persist(
         State(
             shift_to_event=new_shift_to_event,
             shift_updated_at=new_updated_at,
+            shift_start=new_start,
             last_sync=now.isoformat(),
             preferences=state.preferences.copy(),
         ),
