@@ -48,6 +48,14 @@ def _get_log_level(cfg_level: str) -> str:
     return _LOG_LEVEL_OVERRIDE if _LOG_LEVEL_OVERRIDE is not None else cfg_level
 
 
+def _is_french() -> bool:
+    import locale
+    import os
+
+    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
+    return lang.lower().startswith("fr")
+
+
 def _version_callback(value: bool) -> None:
     if value:
         from easyatcal import __version__
@@ -155,12 +163,9 @@ def config_init(
     with open(EXAMPLE_CONFIG, "r") as f:
         template = f.read()
 
-    import locale
-    import os
     import sys
-    
-    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
-    fr = lang.lower().startswith("fr")
+
+    fr = _is_french()
 
     if interactive:
         
@@ -377,7 +382,6 @@ def sync_cmd(
 
 
 def _prompt_ics_import(output_path: str) -> None:
-    import locale
     import os
     import subprocess
     import sys
@@ -386,8 +390,7 @@ def _prompt_ics_import(output_path: str) -> None:
     from easyatcal.state import load_state, save_state
 
     ics_path = os.path.expanduser(output_path)
-    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
-    fr = lang.lower().startswith("fr")
+    fr = _is_french()
 
     typer.secho("\n📅 " + ("Synchronisation réussie !" if fr else "Calendar Sync Successful!"), fg="green", bold=True)
     typer.echo(("Vos horaires ont été enregistrés dans : " if fr else "Your shifts were saved to: ") + ics_path)
