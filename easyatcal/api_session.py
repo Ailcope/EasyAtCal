@@ -157,7 +157,11 @@ def _iter_rows(payload: Any) -> list[dict[str, Any]]:
             v = payload.get(key)
             if isinstance(v, list):
                 return v
-    return []
+        raise ValueError(
+            f"no recognized rows key (data/results/items/shifts) in payload; "
+            f"keys present: {list(payload)}"
+        )
+    raise ValueError(f"unexpected payload type: {type(payload).__name__}")
 
 
 def _next_url(payload: Any) -> str | None:
@@ -250,8 +254,6 @@ def _parse_dt(s: str) -> datetime:
     are treated as UTC — the easy@work API sends tenant-local
     timestamps without an offset.
     """
-    from datetime import UTC
-
     try:
         dt = datetime.fromisoformat(s)
     except ValueError:
