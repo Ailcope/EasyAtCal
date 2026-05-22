@@ -11,7 +11,7 @@ runner = CliRunner()
 def test_config_init_creates_file(tmp_path: Path):
     target = tmp_path / "config.yaml"
     with patch("easyatcal.cli.config_path", return_value=target):
-        result = runner.invoke(app, ["config", "init"])
+        result = runner.invoke(app, ["config", "init", "--no-interactive"])
 
     assert result.exit_code == 0, result.stdout
     assert target.exists()
