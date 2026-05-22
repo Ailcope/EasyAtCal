@@ -65,3 +65,19 @@ def test_updates_replace_event(tmp_path: Path):
     body = out.read_text()
     assert "SUMMARY:New Title" in body
     assert "SUMMARY:Shift s1" not in body
+
+
+def test_existing_events_preserved_when_not_in_new_shifts(tmp_path: Path):
+    out = tmp_path / "shifts.ics"
+    # First sync writes an old shift.
+    IcsBackend(output_path=out, known_shifts=[]).apply(Changes(adds=[_shift("old")]))
+
+    # Second sync: the CLI builds a fresh backend each run, and the fetch
+    # window no longer contains "old" — only "new" is reported.
+    backend2 = IcsBackend(output_path=out, known_shifts=[])
+    backend2.set_all_shifts([_shift("new")])
+    backend2.apply(Changes(adds=[_shift("new")]))
+
+    body = out.read_text()
+    assert "SUMMARY:Shift old" in body  # preserved across regeneration
+    assert "SUMMARY:Shift new" in body
