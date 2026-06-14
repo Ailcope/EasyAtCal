@@ -87,7 +87,7 @@ def _to_event(
         ev.add("description", shift.notes)
         
     if alarm_minutes_before is not None:
-        alarm = Alarm()
+        alarm = Alarm()  # type: ignore[no-untyped-call]
         alarm.add("action", "DISPLAY")
         alarm.add("description", "Shift Reminder")
         alarm.add("trigger", timedelta(minutes=-alarm_minutes_before))

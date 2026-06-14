@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import time
 from datetime import UTC
 from pathlib import Path
@@ -160,7 +159,7 @@ def config_init(
         raise typer.Exit(code=1)
     target.parent.mkdir(parents=True, exist_ok=True)
     
-    with open(EXAMPLE_CONFIG, "r") as f:
+    with open(EXAMPLE_CONFIG) as f:
         template = f.read()
 
     import sys

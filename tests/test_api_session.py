@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -30,9 +31,6 @@ def _seeded_store(tmp_path: Path, token: str = FAKE_JWT) -> SessionStore:
         }
     )
     return store
-
-
-from unittest.mock import patch
 
 def test_no_token_raises_authenticate(tmp_path: Path) -> None:
     with patch("keyring.get_password", return_value=None):

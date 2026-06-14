@@ -133,13 +133,18 @@ def _persist(
     for shift_id, event_uid in result.mapping.items():
         new_shift_to_event[shift_id] = event_uid
 
-    # For every shift we successfully wrote, stamp the new updated_at and start.
+    # For every shift we successfully wrote, stamp the new updated_at.
     remote_by_id = {s.id: s for s in remote_shifts}
     for shift_id in result.mapping:
         shift = remote_by_id.get(shift_id)
         if shift is not None:
             new_updated_at[shift_id] = shift.updated_at.isoformat()
-            new_start[shift_id] = shift.start.isoformat()
+
+    # Backfill starts for existing events as well as successful writes. Older
+    # state files lack this field, but unchanged remote shifts have no mapping.
+    for shift in remote_shifts:
+        if shift.id in new_shift_to_event:
+            new_start[shift.id] = shift.start.isoformat()
 
     # Prune confirmed deletions.
     deleted_uid_set = set(result.deleted_uids)
