@@ -81,3 +81,19 @@ def test_existing_events_preserved_when_not_in_new_shifts(tmp_path: Path):
     body = out.read_text()
     assert "SUMMARY:Shift old" in body  # preserved across regeneration
     assert "SUMMARY:Shift new" in body
+
+
+def test_alarm_is_written_when_configured(tmp_path: Path):
+    out = tmp_path / "shifts.ics"
+    backend = IcsBackend(
+        output_path=out,
+        known_shifts=[],
+        alarm_minutes_before=30,
+    )
+
+    backend.apply(Changes(adds=[_shift("s1")]))
+
+    body = out.read_text()
+    assert "BEGIN:VALARM" in body
+    assert "TRIGGER:-PT30M" in body
+    assert "DESCRIPTION:Shift Reminder" in body

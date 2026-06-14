@@ -49,6 +49,7 @@ def test_run_sync_applies_changes_and_persists_state(tmp_path: Path):
     saved = load_state(state_path)
     assert saved.shift_to_event == {"s1": "evt-1", "s2": "evt-2"}
     assert saved.shift_updated_at["s1"] == "2026-04-18T00:00:00+00:00"
+    assert saved.shift_start["s1"] == "2026-04-20T09:00:00+00:00"
     assert saved.last_sync == "2026-04-19T12:00:00+00:00"
 
 
@@ -76,7 +77,36 @@ def test_run_sync_persists_partial_state_on_backend_error(tmp_path: Path):
     # s1 WAS persisted; s2 was NOT.
     saved = load_state(state_path)
     assert saved.shift_to_event == {"s1": "evt-1"}
+    assert saved.shift_start == {"s1": "2026-04-20T09:00:00+00:00"}
     assert "s2" not in saved.shift_to_event
+
+
+def test_run_sync_backfills_start_for_unchanged_existing_shift(tmp_path: Path):
+    state_path = tmp_path / "state.json"
+
+    from easyatcal.state import State, save_state
+    save_state(state_path, State(
+        shift_to_event={"s1": "evt-1"},
+        shift_updated_at={"s1": "2026-04-18T00:00:00+00:00"},
+    ))
+
+    api = MagicMock()
+    api.fetch_shifts.return_value = [_shift("s1")]
+
+    backend = MagicMock()
+    backend.apply.return_value = ApplyResult(mapping={})
+
+    run_sync(
+        api=api,
+        backend=backend,
+        state_path=state_path,
+        lookback_days=1,
+        lookahead_days=1,
+        now=datetime(2026, 4, 19, 12, tzinfo=UTC),
+    )
+
+    saved = load_state(state_path)
+    assert saved.shift_start == {"s1": "2026-04-20T09:00:00+00:00"}
 
 
 def test_run_sync_prunes_deleted_uids(tmp_path: Path):
@@ -90,6 +120,10 @@ def test_run_sync_prunes_deleted_uids(tmp_path: Path):
         shift_updated_at={
             "s_old": "2026-04-01T00:00:00+00:00",
             "s_keep": "2026-04-01T00:00:00+00:00",
+        },
+        shift_start={
+            "s_old": "2026-04-18T09:00:00+00:00",
+            "s_keep": "2026-04-20T09:00:00+00:00",
         },
     ))
 
