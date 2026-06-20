@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -30,9 +31,6 @@ def _seeded_store(tmp_path: Path, token: str = FAKE_JWT) -> SessionStore:
         }
     )
     return store
-
-
-from unittest.mock import patch
 
 def test_no_token_raises_authenticate(tmp_path: Path) -> None:
     with patch("keyring.get_password", return_value=None):
@@ -176,8 +174,13 @@ def test_iter_rows_shapes() -> None:
     assert _iter_rows({"results": [{"a": 1}]}) == [{"a": 1}]
     assert _iter_rows({"items": [{"a": 1}]}) == [{"a": 1}]
     assert _iter_rows({"shifts": [{"a": 1}]}) == [{"a": 1}]
-    assert _iter_rows({"nope": 1}) == []
-    assert _iter_rows("string") == []
+    # Empty-but-recognized page is a legit empty result.
+    assert _iter_rows({"data": []}) == []
+    # Unrecognized shapes must raise, not silently sync zero shifts.
+    with pytest.raises(ValueError, match="no recognized rows key"):
+        _iter_rows({"nope": 1})
+    with pytest.raises(ValueError, match="unexpected payload type"):
+        _iter_rows("string")
 
 
 def test_parse_shift_missing_fields_raises() -> None:

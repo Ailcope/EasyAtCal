@@ -2,6 +2,7 @@
 config.yaml
 .env
 *.ics
+*.har
 state.json
 token.json
 .cache/

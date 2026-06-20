@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,10 +10,43 @@ from easyatcal.backends.base import ApplyResult, Changes
 from easyatcal.models import Shift
 
 UID_PREFIX = "easyatcal-"
+# Holds the unformatted title so a custom event_title_format is not re-applied
+# to an already-formatted summary when an old event is reloaded from the file.
+RAW_TITLE_PROP = "X-EASYATCAL-TITLE"
 
 
 def _uid_for(shift_id: str) -> str:
     return f"{UID_PREFIX}{shift_id}"
+
+
+def _shift_from_event(comp: Any) -> Shift | None:
+    """Reconstruct a Shift from a VEVENT we previously wrote. Returns None for
+    events we cannot faithfully rebuild (e.g. all-day or naive datetimes)."""
+    uid = str(comp.get("uid", ""))
+    if not uid.startswith(UID_PREFIX):
+        return None
+    try:
+        start = comp.decoded("dtstart")
+        end = comp.decoded("dtend")
+    except (KeyError, ValueError):
+        return None
+    if not isinstance(start, datetime) or not isinstance(end, datetime):
+        return None
+    raw_title = comp.get(RAW_TITLE_PROP) or comp.get("summary")
+    location = comp.get("location")
+    notes = comp.get("description")
+    try:
+        return Shift(
+            id=uid[len(UID_PREFIX):],
+            start=start,
+            end=end,
+            title=str(raw_title) if raw_title else "Shift",
+            location=str(location) if location else None,
+            notes=str(notes) if notes else None,
+            updated_at=datetime.now(UTC),
+        )
+    except ValueError:
+        return None
 
 
 def _to_event(
@@ -35,6 +69,7 @@ def _to_event(
     ).strip()
     
     ev.add("summary", title)
+    ev.add(RAW_TITLE_PROP, shift.title)
     ev.add("dtstart", shift.start)
     ev.add("dtend", shift.end)
     # Always use current time for dtstamp to indicate when the file was generated
@@ -52,7 +87,7 @@ def _to_event(
         ev.add("description", shift.notes)
         
     if alarm_minutes_before is not None:
-        alarm = Alarm()
+        alarm = Alarm()  # type: ignore[no-untyped-call]
         alarm.add("action", "DISPLAY")
         alarm.add("description", "Shift Reminder")
         alarm.add("trigger", timedelta(minutes=-alarm_minutes_before))
@@ -77,12 +112,32 @@ class IcsBackend:
         alarm_minutes_before: int | None = None,
     ) -> None:
         self.output_path = Path(output_path).expanduser()
-        self._current: dict[str, Shift] = {s.id: s for s in known_shifts}
         self.event_title_format = event_title_format
         self.alarm_minutes_before = alarm_minutes_before
+        # Seed from any existing file so events outside the current fetch window
+        # survive regeneration, then overlay caller-provided known shifts.
+        self._current: dict[str, Shift] = self._load_existing()
+        for s in known_shifts:
+            self._current[s.id] = s
+
+    def _load_existing(self) -> dict[str, Shift]:
+        if not self.output_path.exists():
+            return {}
+        try:
+            cal = Calendar.from_ical(self.output_path.read_bytes())
+        except (ValueError, KeyError):
+            return {}
+        out: dict[str, Shift] = {}
+        for comp in cal.walk("VEVENT"):
+            shift = _shift_from_event(comp)
+            if shift is not None:
+                out[shift.id] = shift
+        return out
 
     def set_all_shifts(self, shifts: list[Shift]) -> None:
-        self._current = {s.id: s for s in shifts}
+        # Merge: refresh window shifts without dropping previously-known ones.
+        for s in shifts:
+            self._current[s.id] = s
 
     def apply(self, changes: Changes) -> ApplyResult:
         mapping: dict[str, str] = {}

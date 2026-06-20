@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import json
+import os
+import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from easyatcal.config import EasyAtWorkAuth
@@ -55,9 +58,7 @@ def do_login(
             page = context.new_page()
             
             discovered_meta: dict[str, str | int] = {}
-            import re
-
-            def on_request(request):
+            def on_request(request: Any) -> None:
                 match = re.search(r"^(https?://[^/]+)/customers/(\d+)/employees/(\d+)", request.url)
                 if match:
                     discovered_meta["api_url"] = match.group(1)
@@ -109,12 +110,10 @@ def do_login(
                 with contextlib.suppress(PWTimeout):
                     page.wait_for_timeout(3000)
 
-            state = context.storage_state()
+            state: dict[str, Any] = dict(context.storage_state())
             if discovered_meta:
                 state["eaw_meta"] = discovered_meta
-            
-            import json
-            import os
+
             tmp = storage_path.with_suffix(storage_path.suffix + ".tmp")
             tmp.write_text(json.dumps(state))
             os.replace(tmp, storage_path)

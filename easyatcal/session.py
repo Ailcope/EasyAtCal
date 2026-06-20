@@ -71,11 +71,8 @@ class SessionStore:
     def clear(self) -> None:
         with contextlib.suppress(FileNotFoundError):
             self.path.unlink()
-        try:
-            import keyring
+        with contextlib.suppress(Exception):
             keyring.delete_password("easyatcal", "jwt")
-        except Exception:
-            pass
 
     def eaw_meta(self) -> dict[str, Any] | None:
         """Returns the extracted eaw_meta (api_url, customer_id, employee_id)
