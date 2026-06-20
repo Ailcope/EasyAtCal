@@ -63,9 +63,12 @@ class EasyAtWorkAuth(BaseModel):
             raise ValueError("auth_mode=user requires email")
         return self
 
-    def shifts_url(self, session_meta: dict | None = None) -> str:
+    def shifts_url(self, session_meta: dict[str, str | int] | None = None) -> str:
         """Fully-qualified base URL of the shifts collection for this user."""
-        api_url = self.api_url or (session_meta or {}).get("api_url")
+        session_api_url = (session_meta or {}).get("api_url")
+        api_url = self.api_url or (
+            session_api_url if isinstance(session_api_url, str) else ""
+        )
         customer_id = self.customer_id or (session_meta or {}).get("customer_id")
         employee_id = self.employee_id or (session_meta or {}).get("employee_id")
 
