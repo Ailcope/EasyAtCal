@@ -48,3 +48,15 @@ def test_state_roundtrip_with_updated_at(tmp_path):
     save_state(path, s)
     loaded = load_state(path)
     assert loaded.shift_updated_at == {"s1": "2026-04-18T10:00:00+00:00"}
+
+
+def test_state_roundtrip_with_shift_start(tmp_path):
+    path = tmp_path / "state.json"
+    s = State(
+        shift_to_event={"s1": "e1"},
+        shift_start={"s1": "2026-04-20T09:00:00+00:00"},
+        last_sync="2026-04-19T12:00:00+00:00",
+    )
+    save_state(path, s)
+    loaded = load_state(path)
+    assert loaded.shift_start == {"s1": "2026-04-20T09:00:00+00:00"}

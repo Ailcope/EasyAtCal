@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import time
 from datetime import UTC
 from pathlib import Path
@@ -46,6 +45,14 @@ def _cfg_path() -> Path:
 
 def _get_log_level(cfg_level: str) -> str:
     return _LOG_LEVEL_OVERRIDE if _LOG_LEVEL_OVERRIDE is not None else cfg_level
+
+
+def _is_french() -> bool:
+    import locale
+    import os
+
+    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
+    return lang.lower().startswith("fr")
 
 
 def _version_callback(value: bool) -> None:
@@ -152,15 +159,12 @@ def config_init(
         raise typer.Exit(code=1)
     target.parent.mkdir(parents=True, exist_ok=True)
     
-    with open(EXAMPLE_CONFIG, "r") as f:
+    with open(EXAMPLE_CONFIG) as f:
         template = f.read()
 
-    import locale
-    import os
     import sys
-    
-    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
-    fr = lang.lower().startswith("fr")
+
+    fr = _is_french()
 
     if interactive:
         
@@ -342,7 +346,12 @@ def sync_cmd(
         )
         state = load_state(state_path())
         changes = compute_changes(
-            remote, state, known_updated_at=state.shift_updated_at
+            remote,
+            state,
+            known_updated_at=state.shift_updated_at,
+            from_date=from_date,
+            to_date=to_date,
+            known_start=state.shift_start,
         )
         typer.echo(
             f"Dry run: {len(changes.adds)} add, "
@@ -377,7 +386,6 @@ def sync_cmd(
 
 
 def _prompt_ics_import(output_path: str) -> None:
-    import locale
     import os
     import subprocess
     import sys
@@ -386,8 +394,7 @@ def _prompt_ics_import(output_path: str) -> None:
     from easyatcal.state import load_state, save_state
 
     ics_path = os.path.expanduser(output_path)
-    lang = os.environ.get("LANG") or (locale.getlocale()[0] or "")
-    fr = lang.lower().startswith("fr")
+    fr = _is_french()
 
     typer.secho("\n📅 " + ("Synchronisation réussie !" if fr else "Calendar Sync Successful!"), fg="green", bold=True)
     typer.echo(("Vos horaires ont été enregistrés dans : " if fr else "Your shifts were saved to: ") + ics_path)
