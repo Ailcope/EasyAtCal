@@ -6,7 +6,7 @@
 [![Coverage](https://img.shields.io/badge/Coverage-90%25-brightgreen.svg?logo=codecov&logoColor=white)](https://github.com/Ailcope/EasyAtCal)
 [![Release](https://img.shields.io/github/v/release/Ailcope/EasyAtCal?label=Release&logo=github&logoColor=white&color=blue)](https://github.com/Ailcope/EasyAtCal/releases)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative&logoColor=white)](./LICENSE)
+[![License: PolyForm NC](https://img.shields.io/badge/License-PolyForm%20NC-orange.svg?logo=opensourceinitiative&logoColor=white)](./LICENSE)
 
 **One-way sync of easy@work shifts into Apple Calendar, Google Calendar, or standard ICS files.**
 
@@ -154,4 +154,4 @@ Your easy@work password is **never stored on disk**. The configuration file only
 
 ## License
 
-MIT — see `LICENSE`.
+[PolyForm Noncommercial 1.0.0](./LICENSE) — free for noncommercial use; commercial use or reselling the code requires the author's permission.
